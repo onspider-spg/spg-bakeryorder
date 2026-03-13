@@ -1,9 +1,9 @@
 /**
- * Version 1.3 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.4 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Phase 4: Set Quota
+ * Phase 5: Waste Log + Form
  * ═══════════════════════════════════════════
  */
 
@@ -740,8 +740,205 @@ const Scr = (() => {
       btn.textContent = '💾 บันทึก';
     }
   }
-  function renderWaste() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Waste Log</div></div><div class="content" id="wasteContent"><div class="skel skel-card"></div></div>`; }
-  function fillWaste() { const el = document.getElementById('wasteContent'); if (!el) return; el.innerHTML = App.S.wasteLog.length ? `<div style="font-size:11px;color:var(--t3)">${App.S.wasteLog.length} รายการ — Phase 5</div>` : '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ยังไม่มี Waste</div></div>'; }
+  // ═══ WASTE LOG ═══
+  let _wasteDateFrom = '';
+  let _wasteDateTo = '';
+  let _wasteShowCount = 5;
+
+  function renderWaste() {
+    const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
+    const t = App.sydneyNow(); t.setDate(t.getDate() + 1);
+    _wasteDateFrom = _wasteDateFrom || App.fmtDate(y);
+    _wasteDateTo = _wasteDateTo || App.fmtDate(t);
+    _wasteShowCount = 5;
+
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Waste Log</div><div class="topbar-icon" onclick="App.loadWaste(true)" title="Refresh">↻</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅 วันที่:</span>
+        <input type="date" class="date-inp" value="${_wasteDateFrom}" onchange="Scr.setWasteDate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_wasteDateTo}" onchange="Scr.setWasteDate('to',this.value)">
+        <span class="date-link" onclick="Scr.setWasteDatePreset('3day')">3 วัน</span>
+        <span class="date-link" onclick="Scr.setWasteDatePreset('all')">ทั้งหมด</span>
+      </div>
+      <div class="content" id="wasteContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillWaste() {
+    const el = document.getElementById('wasteContent');
+    if (!el) return;
+    const all = App.S.wasteLog || [];
+
+    // Filter by date
+    let filtered = all;
+    if (_wasteDateFrom) filtered = filtered.filter(w => (w.waste_date || '') >= _wasteDateFrom);
+    if (_wasteDateTo) filtered = filtered.filter(w => (w.waste_date || '') <= _wasteDateTo);
+
+    if (!filtered.length) {
+      el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div></div><button class="btn btn-primary" onclick="Scr.showWasteForm()">+ บันทึกใหม่</button></div>
+        <div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ยังไม่มีรายการ Waste</div></div>`;
+      return;
+    }
+
+    const visible = filtered.slice(0, _wasteShowCount);
+    const hasMore = filtered.length > _wasteShowCount;
+    const reasonColor = (r) => r === 'Expired' ? 'var(--red)' : r === 'Damaged' ? 'var(--orange)' : r === 'Production Error' ? 'var(--acc)' : 'var(--t2)';
+
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;color:var(--t3)">${filtered.length} รายการ</div>
+        <button class="btn btn-primary" onclick="Scr.showWasteForm()">+ บันทึกใหม่</button>
+      </div>
+      <div class="waste-list">${visible.map(w => `<div class="wcard" style="border-left-color:${reasonColor(w.reason)}">
+        <div class="wcard-hd"><span class="wcard-name">${App.esc(w.product_name)}</span><span class="wcard-qty">−${w.quantity} ${App.esc(w.unit)}</span></div>
+        <div class="wcard-meta">${App.fmtDateAU(w.waste_date)} · ${App.esc(w.reason)} · โดย ${App.esc(w.recorded_by_name)}</div>
+        <div class="wcard-actions">
+          <span class="wcard-edit" onclick="Scr.showWasteEdit('${w.waste_id}')">✏️ แก้ไข</span>
+          <span class="wcard-del" onclick="Scr.confirmDeleteWaste('${w.waste_id}')">🗑️ ลบ</span>
+        </div>
+      </div>`).join('')}</div>
+      ${hasMore ? `<div class="load-more" onclick="Scr.showMoreWaste()">แสดง ${_wasteShowCount} จาก ${filtered.length} · โหลดเพิ่มอีก 5 ↓</div>` : ''}`;
+  }
+
+  function setWasteDate(which, val) { if (which === 'from') _wasteDateFrom = val; else _wasteDateTo = val; fillWaste(); }
+  function setWasteDatePreset(p) {
+    if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 1); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _wasteDateFrom = App.fmtDate(y); _wasteDateTo = App.fmtDate(t); }
+    else { _wasteDateFrom = ''; _wasteDateTo = ''; }
+    fillWaste();
+  }
+  function showMoreWaste() { _wasteShowCount += 5; fillWaste(); }
+
+  // ─── Waste Form Popup (Create) ───
+  function showWasteForm() {
+    const prods = App.S.products || [];
+    const opts = prods.map(p => `<option value="${p.product_id}">${App.esc(p.product_name)} (${App.esc(p.unit)})</option>`).join('');
+    const s = App.S.session || {};
+
+    App.showDialog(`<div class="popup-sheet">
+      <div class="popup-header"><div class="popup-title">🗑️ บันทึกของเสีย</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd2);margin-bottom:6px;font-size:11px"><span style="color:var(--t3)">ผู้บันทึก</span><span style="font-weight:600;color:var(--acc)">${App.esc(s.display_name)}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd2);margin-bottom:12px;font-size:11px"><span style="color:var(--t3)">วันที่</span><span style="font-weight:600;color:var(--acc)">${App.fmtDateThai(App.todaySydney())} (auto)</span></div>
+      <div class="fg"><label class="lb">สินค้า *</label><select class="sel" id="wfProduct"><option value="">🔍 เลือก...</option>${opts}</select></div>
+      <div class="fg"><label class="lb">จำนวน *</label><input class="inp" type="number" id="wfQty" placeholder="0" min="1" style="font-size:16px;font-weight:700"></div>
+      <div class="fg"><label class="lb">วันผลิต</label><input class="inp" type="date" id="wfProdDate"></div>
+      <div class="fg"><label class="lb">สาเหตุ *</label><select class="sel" id="wfReason"><option value="Expired">Expired</option><option value="Damaged">Damaged</option><option value="Production Error">Prod Error</option><option value="Quality">Quality</option></select></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="wfSaveBtn" onclick="Scr.saveWaste()">💾 บันทึก</button></div>
+    </div>`);
+  }
+
+  async function saveWaste() {
+    const btn = document.getElementById('wfSaveBtn');
+    if (!btn || btn.disabled) return;
+
+    const productId = document.getElementById('wfProduct')?.value;
+    const qty = parseInt(document.getElementById('wfQty')?.value) || 0;
+    const reason = document.getElementById('wfReason')?.value;
+    const prodDate = document.getElementById('wfProdDate')?.value || '';
+
+    if (!productId) { App.toast('เลือกสินค้า', 'error'); return; }
+    if (!qty || qty <= 0) { App.toast('ใส่จำนวน', 'error'); return; }
+
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+    try {
+      const resp = await API.createWaste({ product_id: productId, quantity: qty, reason, production_date: prodDate });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast(resp.message || '✅ บันทึกแล้ว', 'success');
+        // Push to memory
+        const prod = App.S.products.find(p => p.product_id === productId);
+        App.S.wasteLog.unshift({
+          waste_id: resp.data.waste_id, product_id: productId, quantity: qty,
+          waste_date: App.todaySydney(), production_date: prodDate, reason,
+          product_name: prod?.product_name || productId, unit: prod?.unit || '',
+          recorded_by_name: App.S.session?.display_name || '',
+        });
+        fillWaste();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = '💾 บันทึก';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = '💾 บันทึก';
+    }
+  }
+
+  // ─── Waste Edit Popup ───
+  function showWasteEdit(wasteId) {
+    const w = App.S.wasteLog.find(x => x.waste_id === wasteId);
+    if (!w) return;
+
+    App.showDialog(`<div class="popup-sheet" style="width:380px">
+      <div class="popup-header"><div class="popup-title">✏️ แก้ไข — ${App.esc(w.product_name)}</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
+      <div class="fg"><label class="lb">จำนวน *</label><input class="inp" type="number" id="weQty" value="${w.quantity}" min="1" style="font-size:16px;font-weight:700"></div>
+      <div class="fg"><label class="lb">วันผลิต</label><input class="inp" type="date" id="weProdDate" value="${w.production_date || ''}"></div>
+      <div class="fg"><label class="lb">สาเหตุ</label><select class="sel" id="weReason">
+        <option value="Expired"${w.reason === 'Expired' ? ' selected' : ''}>Expired</option>
+        <option value="Damaged"${w.reason === 'Damaged' ? ' selected' : ''}>Damaged</option>
+        <option value="Production Error"${w.reason === 'Production Error' ? ' selected' : ''}>Prod Error</option>
+        <option value="Quality"${w.reason === 'Quality' ? ' selected' : ''}>Quality</option>
+      </select></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="weSaveBtn" onclick="Scr.saveWasteEdit('${wasteId}')">💾 บันทึก</button></div>
+    </div>`);
+  }
+
+  async function saveWasteEdit(wasteId) {
+    const btn = document.getElementById('weSaveBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+
+    const qty = parseInt(document.getElementById('weQty')?.value) || 0;
+    const reason = document.getElementById('weReason')?.value;
+    const prodDate = document.getElementById('weProdDate')?.value || '';
+
+    try {
+      const resp = await API.editWaste({ waste_id: wasteId, quantity: qty, reason, production_date: prodDate });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast('✅ แก้ไขแล้ว', 'success');
+        // Update memory
+        const w = App.S.wasteLog.find(x => x.waste_id === wasteId);
+        if (w) { w.quantity = qty; w.reason = reason; w.production_date = prodDate; }
+        fillWaste();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = '💾 บันทึก';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = '💾 บันทึก';
+    }
+  }
+
+  // ─── Waste Delete ───
+  function confirmDeleteWaste(wasteId) {
+    App.showDialog(`<div class="popup-sheet" style="width:320px">
+      <div class="popup-title" style="margin-bottom:12px">🗑️ ลบรายการนี้?</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:16px">${App.esc(wasteId)}</div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ไม่ใช่</button><button class="btn btn-danger" style="flex:1" id="wDelBtn" onclick="Scr.doDeleteWaste('${wasteId}')">ลบเลย</button></div>
+    </div>`);
+  }
+
+  async function doDeleteWaste(wasteId) {
+    const btn = document.getElementById('wDelBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'กำลังลบ...';
+
+    try {
+      const resp = await API.deleteWaste({ waste_id: wasteId });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast('✅ ลบแล้ว', 'success');
+        App.S.wasteLog = App.S.wasteLog.filter(w => w.waste_id !== wasteId);
+        fillWaste();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = 'ลบเลย';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = 'ลบเลย';
+    }
+  }
   function renderReturns() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Returns</div></div><div class="content" id="returnsContent"><div class="skel skel-card"></div></div>`; }
   function fillReturns() { const el = document.getElementById('returnsContent'); if (!el) return; el.innerHTML = App.S.returns.length ? `<div style="font-size:11px;color:var(--t3)">${App.S.returns.length} รายการ — Phase 6</div>` : '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ยังไม่มี Return</div></div>'; }
   function fillBrowse() { /* called from App after data load */ filterProducts(); }
@@ -755,6 +952,9 @@ const Scr = (() => {
     renderOrders, fillOrders, renderOrderDetail, fillOrderDetail,
     setOrderFilter, setOrderDate, setOrderDatePreset, showMoreOrders,
     showEditItem, saveEditItem, confirmCancel, doCancel,
-    renderQuota, fillQuota, filterQuota, toggleQuotaAcc, saveQuota, renderWaste, fillWaste, renderReturns, fillReturns,
+    renderQuota, fillQuota, filterQuota, toggleQuotaAcc, saveQuota,
+    renderWaste, fillWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
+    showWasteForm, saveWaste, showWasteEdit, saveWasteEdit, confirmDeleteWaste, doDeleteWaste,
+    renderReturns, fillReturns,
   };
 })();
