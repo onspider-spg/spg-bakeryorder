@@ -430,7 +430,7 @@ const Scr = (() => {
     _orderFilter = 'all';
     _orderShowCount = 5;
 
-    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">View Orders</div><div class="topbar-icon" onclick="App.loadOrders(true)" title="Refresh">↻</div></div>
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">View Orders</div></div>
       <div class="order-date-bar">
         <span class="date-label">📅 ส่ง:</span>
         <input type="date" class="date-inp" value="${_orderDateFrom}" onchange="Scr.setOrderDate('from',this.value)">
@@ -839,7 +839,7 @@ const Scr = (() => {
     _wasteDateTo = _wasteDateTo || App.fmtDate(t);
     _wasteShowCount = 5;
 
-    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Waste Log</div><div class="topbar-icon" onclick="App.loadWaste(true)" title="Refresh">↻</div></div>
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Waste Log</div></div>
       <div class="order-date-bar">
         <span class="date-label">📅 วันที่:</span>
         <input type="date" class="date-inp" value="${_wasteDateFrom}" onchange="Scr.setWasteDate('from',this.value)">
@@ -1045,7 +1045,7 @@ const Scr = (() => {
     _retDateTo = _retDateTo || App.fmtDate(t);
     _retShowCount = 5;
 
-    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Returns</div><div class="topbar-icon" onclick="App.loadReturns(true)" title="Refresh">↻</div></div>
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Returns</div></div>
       <div class="order-date-bar">
         <span class="date-label">📅 วันที่:</span>
         <input type="date" class="date-inp" value="${_retDateFrom}" onchange="Scr.setRetDate('from',this.value)">
