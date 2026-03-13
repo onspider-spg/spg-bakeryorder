@@ -1,5 +1,5 @@
 /**
- * Version 1.6 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -305,6 +305,25 @@ const App = (() => {
     go('browse');
   }
 
+  function goToBrowse() {
+    // Resume if cart/stock has data, otherwise start fresh
+    if (S.cart.length > 0 || Object.keys(S.stockInputs).length > 0) {
+      go('browse'); // resume — keep everything
+    } else {
+      startOrder(); // new — clear + go
+    }
+  }
+
+  function clearOrder() {
+    S.cart = [];
+    S.stockInputs = {};
+    S.headerNote = '';
+    S.productSearch = '';
+    S.productFilter = 'all';
+    toast('🗑️ ล้างข้อมูลแล้ว', 'info');
+    go('browse', {}, true); // replace so back button doesn't go to "dirty" state
+  }
+
   function refreshCurrent() {
     if (currentRoute === 'home') { loadDashboardData(); }
     else if (currentRoute === 'orders') { loadOrders(true); }
@@ -329,7 +348,7 @@ const App = (() => {
     html += '<div style="height:12px"></div>';
 
     const orderItems = [
-      { r: 'browse', lbl: 'Create Order', perm: 'fn_create_order', action: 'App.startOrder()' },
+      { r: 'browse', lbl: 'Create Order', perm: 'fn_create_order', action: 'App.goToBrowse()' },
       { r: 'orders', lbl: 'View Orders', perm: 'fn_view_own_orders' },
       { r: 'quota',  lbl: 'Set Quota',   perm: 'fn_create_order' },
     ];
@@ -346,7 +365,7 @@ const App = (() => {
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.6 | 14 Mar 2026</div>
+      <div class="sd-version">v1.6.1 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -385,7 +404,7 @@ const App = (() => {
     let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(init)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}</div></div></div>`;
     html += mobItem('home', '◇', 'Dashboard');
     html += '<div style="height:8px"></div><div class="mob-sidebar-section">Orders</div>';
-    if (hasPerm('fn_create_order')) html += `<div class="mob-sd-item" onclick="App.closeSidebar();App.startOrder()"><span class="sd-item-icon">⊞</span>Create Order</div>`;
+    if (hasPerm('fn_create_order')) html += `<div class="mob-sd-item" onclick="App.closeSidebar();App.goToBrowse()"><span class="sd-item-icon">⊞</span>Create Order</div>`;
     if (hasPerm('fn_view_own_orders')) html += mobItem('orders', '⊞', 'View Orders');
     if (hasPerm('fn_create_order')) html += mobItem('quota', '⊞', 'Set Quota');
     html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
@@ -494,7 +513,7 @@ const App = (() => {
 
   return {
     S, go, toast, showDialog, closeDialog, esc,
-    showProfilePopup, startOrder, hasPerm, refreshCurrent,
+    showProfilePopup, startOrder, goToBrowse, clearOrder, hasPerm, refreshCurrent,
     openSidebar, closeSidebar, toggleSidebar,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,

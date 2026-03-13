@@ -1,9 +1,9 @@
 /**
- * Version 1.5.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.3 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Fix: A-Z sort + Sortable Headers + URL update
+ * Fix: Resume order + Clear button
  * ═══════════════════════════════════════════
  */
 
@@ -44,7 +44,9 @@ const Scr = (() => {
       <div style="margin-bottom:16px"><div style="font-size:14px;font-weight:700;margin-bottom:2px">Welcome, ${App.esc(s.display_name)}</div><div style="font-size:11px;color:var(--t3)">${App.esc(s.tier_id)} · ${App.esc(App.S.deptMapping?.module_role || App.S.role)} · ${App.esc(App.getStoreName(s.store_id))} · ${App.esc(s.dept_id)}</div></div>
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Orders</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px">
-        ${dCard('📝', 'Create Order', "App.startOrder()", true)}
+        ${App.S.cart.length > 0
+          ? dCard('📝', 'Continue Order (' + App.S.cart.length + ')', "App.goToBrowse()", true)
+          : dCard('📝', 'Create Order', "App.goToBrowse()", true)}
         ${dCard('📋', 'View Orders', "App.go('orders')")}
         ${dCard('📊', 'Set Quota', "App.go('quota')")}
       </div>
@@ -80,9 +82,17 @@ const Scr = (() => {
     const isToday = dd === today;
     const isTmr = dd === tmr;
     const isCustom = !isToday && !isTmr;
+    const hasData = App.S.cart.length > 0 || Object.keys(App.S.stockInputs).length > 0;
+
+    const resumeBar = hasData ? `<div class="browse-resume">
+      <span class="browse-resume-text">📝 กำลังสั่ง${App.S.cart.length ? ' (' + App.S.cart.length + ' รายการ)' : ' (มีสต็อกค้าง)'}</span>
+      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="App.clearOrder()">🗑️ ล้าง</button>
+      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="App.startOrder()">🆕 สั่งใหม่</button>
+    </div>` : '';
 
     return `
       <div class="browse-header">
+        ${resumeBar}
         <div class="date-pills">
           <span class="date-label">ส่งวัน</span>
           <div class="chip${isToday ? ' active' : ''}" onclick="Scr.setDate('today')">วันนี้</div>

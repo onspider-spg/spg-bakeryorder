@@ -1,6 +1,6 @@
-/* Version 1.5.2 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.5.3 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Fix: Sortable headers + URL update */
+/* Fix: Resume bar + clear button */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -218,6 +218,16 @@ html, body {
 /* ═══════════════════════════════════════════════════ */
 /* ═══ BROWSE PRODUCTS (Phase 2) ═══ */
 /* ═══════════════════════════════════════════════════ */
+
+/* ─── Resume Bar ─── */
+.browse-resume {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px var(--sp-lg); font-size: var(--fs-sm);
+  background: #fffbeb; border-bottom: 1px solid #fde68a;
+}
+.browse-resume-text {
+  flex: 1; font-weight: 600; color: #92400e;
+}
 
 .browse-header {
   flex-shrink: 0; background: var(--bg);
@@ -634,6 +644,7 @@ html, body {
   .topbar { padding: calc(var(--sp-sm) + var(--safe-top)) var(--sp-md) var(--sp-sm); }
   .toolbar { padding: var(--sp-sm) var(--sp-md); }
   .content { padding: var(--sp-sm) var(--sp-md); }
+  .browse-resume { padding: 5px var(--sp-md); font-size: 11px; }
   .date-pills { padding: 6px var(--sp-md); }
   .search-bar { padding: 0 var(--sp-md) 6px; }
   .cat-chips { padding: 0 var(--sp-md) 6px; }
