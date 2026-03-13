@@ -1,9 +1,9 @@
 /**
- * Version 1.5.3 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.4 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Fix: Resume order + Clear button
+ * Fix: Single clear button + Auto-suggest + Hard refresh
  * ═══════════════════════════════════════════
  */
 
@@ -86,8 +86,7 @@ const Scr = (() => {
 
     const resumeBar = hasData ? `<div class="browse-resume">
       <span class="browse-resume-text">📝 กำลังสั่ง${App.S.cart.length ? ' (' + App.S.cart.length + ' รายการ)' : ' (มีสต็อกค้าง)'}</span>
-      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="App.clearOrder()">🗑️ ล้าง</button>
-      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="App.startOrder()">🆕 สั่งใหม่</button>
+      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="App.startOrder()">🗑️ ล้างใหม่</button>
     </div>` : '';
 
     return `
@@ -245,11 +244,12 @@ const Scr = (() => {
     return saved != null && saved !== '' ? parseFloat(saved) : null;
   }
 
-  // ─── Stock input handlers: save to S.stockInputs immediately ───
+  // ─── Stock input handlers: save to S.stockInputs + auto-suggest ───
   function onStock1(el, pid) {
     App.S.stockInputs[pid] = el.value;
     const cart = App.getCartItem(pid);
     if (cart) App.setCartStock(pid, parseFloat(el.value) || null);
+    autoSuggest(pid, parseFloat(el.value));
   }
 
   function onStock2(el, pid) {
@@ -263,6 +263,45 @@ const Scr = (() => {
     if (sumEl) sumEl.textContent = (n1 || n2) ? sum : '—';
     const cart = App.getCartItem(pid);
     if (cart) App.setCartStock(pid, (n1 || n2) ? sum : null);
+    if (n1 || n2) autoSuggest(pid, sum);
+  }
+
+  // ─── Auto-suggest: quota − stock → fill stepper (only if qty = 0) ───
+  function autoSuggest(pid, stockVal) {
+    if (stockVal == null || isNaN(stockVal)) return;
+    const cart = App.getCartItem(pid);
+    if (cart && cart.qty > 0) return; // user already set qty — don't overwrite
+
+    const p = App.S.products.find(pr => pr.product_id === pid);
+    if (!p) return;
+    const quota = App.S.quotas[pid];
+    if (quota == null || quota <= 0) return; // no quota → no suggest
+
+    const minOrd = p.min_order || 1;
+    const stepVal = p.order_step || 1;
+    const maxOrd = p.max_order || 9999;
+
+    let suggest = Math.max(quota - stockVal, 0);
+    if (suggest <= 0) return; // stock ≥ quota → no suggest
+
+    // Round up to min_order
+    if (suggest < minOrd) suggest = minOrd;
+    // Round to order_step
+    if (stepVal > 1) suggest = Math.ceil(suggest / stepVal) * stepVal;
+    // Cap at max_order
+    if (suggest > maxOrd) suggest = maxOrd;
+
+    // Auto-fill stepper
+    App.setCartQty(pid, suggest);
+    App.setCartStock(pid, stockVal);
+
+    // Targeted DOM update
+    const qtyEl = document.getElementById('qty-' + pid);
+    if (qtyEl) { qtyEl.textContent = suggest; qtyEl.className = 'stp-val stp-has'; }
+    const card = document.getElementById('pc-' + pid);
+    if (card) card.className = 'pcard pcard-active';
+    card?.querySelectorAll('.stp-btn').forEach(b => b.className = 'stp-btn stp-active');
+    updateCartFooter();
   }
 
   function updateCartFooter() {

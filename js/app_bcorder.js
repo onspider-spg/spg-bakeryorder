@@ -1,5 +1,5 @@
 /**
- * Version 1.6.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -306,31 +306,16 @@ const App = (() => {
   }
 
   function goToBrowse() {
-    // Resume if cart/stock has data, otherwise start fresh
     if (S.cart.length > 0 || Object.keys(S.stockInputs).length > 0) {
-      go('browse'); // resume — keep everything
+      go('browse');
     } else {
-      startOrder(); // new — clear + go
+      startOrder();
     }
   }
 
-  function clearOrder() {
-    S.cart = [];
-    S.stockInputs = {};
-    S.headerNote = '';
-    S.productSearch = '';
-    S.productFilter = 'all';
-    toast('🗑️ ล้างข้อมูลแล้ว', 'info');
-    go('browse', {}, true); // replace so back button doesn't go to "dirty" state
-  }
-
   function refreshCurrent() {
-    if (currentRoute === 'home') { loadDashboardData(); }
-    else if (currentRoute === 'orders') { loadOrders(true); }
-    else if (currentRoute === 'waste') { loadWaste(true); }
-    else if (currentRoute === 'returns') { loadReturns(true); }
-    else if (currentRoute === 'browse') { S._prodsLoaded = false; S._quotasDay = -1; loadBrowseData(); }
-    toast('↻ Refreshing...', 'info');
+    // Hard refresh — เหมือน cmd+shift+R
+    location.reload();
   }
 
   // ═══ SIDEBAR ═══
@@ -365,7 +350,7 @@ const App = (() => {
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.6.1 | 14 Mar 2026</div>
+      <div class="sd-version">v1.6.2 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -513,7 +498,7 @@ const App = (() => {
 
   return {
     S, go, toast, showDialog, closeDialog, esc,
-    showProfilePopup, startOrder, goToBrowse, clearOrder, hasPerm, refreshCurrent,
+    showProfilePopup, startOrder, goToBrowse, hasPerm, refreshCurrent,
     openSidebar, closeSidebar, toggleSidebar,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,
