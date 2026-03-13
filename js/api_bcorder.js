@@ -1,5 +1,5 @@
 /**
- * Version 1.0.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
@@ -64,6 +64,7 @@ const API = (() => {
     getToken, setToken, clearToken, cache: _SC, logout,
     // Endpoints
     initLite:       ()          => get('init_lite'),
+    initBrowse:     (p = {})    => get('init_browse', p),
     getCategories:  ()          => get('get_categories'),
     getProducts:    (p = {})    => get('get_products', p),
     getDashboard:   ()          => get('get_dashboard'),

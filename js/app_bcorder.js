@@ -1,5 +1,5 @@
 /**
- * Version 1.5.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -114,38 +114,37 @@ const App = (() => {
   }
 
   async function loadBrowseData() {
-    // Categories (localStorage cache)
-    if (!S._catsLoaded) {
-      const cached = API.cache.get('cats');
-      if (cached) { S.categories = cached; S._catsLoaded = true; }
-      else if (!S._catsLoading) {
-        S._catsLoading = true;
-        try {
-          const resp = await API.getCategories();
-          if (resp.success) { S.categories = resp.data; S._catsLoaded = true; API.cache.set('cats', resp.data, 1440); }
-        } finally { S._catsLoading = false; }
+    // Categories: already in memory from init_lite — no fetch needed
+
+    // Products + Stock + Quotas: 1 bundled call (or memory if loaded)
+    const d = new Date(S.deliveryDate + 'T00:00:00');
+    const dow = d.getDay();
+
+    if (S._prodsLoaded && S._quotasDay === dow) {
+      // Everything in memory — 0 API calls
+      Scr.fillBrowse();
+      return;
+    }
+
+    if (S._prodsLoading) return;
+    S._prodsLoading = true;
+    try {
+      const resp = await API.initBrowse({ day: String(dow) });
+      if (resp.success) {
+        S.products = (resp.products || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+        S._prodsLoaded = true;
+        S.quotas = resp.quotas || {};
+        S._quotasDay = dow;
       }
-    }
-    // Products (memory only)
-    if (!S._prodsLoaded && !S._prodsLoading) {
-      S._prodsLoading = true;
-      try {
-        const resp = await API.getProducts({ include_stock: 'true' });
-        if (resp.success) {
-          S.products = (resp.data || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
-          S._prodsLoaded = true;
-        }
-      } finally { S._prodsLoading = false; }
-    }
-    // Quotas (for delivery date's day of week)
-    await loadQuotas();
+    } finally { S._prodsLoading = false; }
     Scr.fillBrowse();
   }
 
   async function loadQuotas() {
+    // Called when delivery date changes — only need quotas (products already loaded)
     const d = new Date(S.deliveryDate + 'T00:00:00');
     const dow = d.getDay();
-    if (S._quotasDay === dow && Object.keys(S.quotas).length > 0) return;
+    if (S._quotasDay === dow) return;
     try {
       const resp = await API.getQuotas({ day: String(dow) });
       if (resp.success) { S.quotas = resp.data; S._quotasDay = dow; }
@@ -311,7 +310,7 @@ const App = (() => {
     else if (currentRoute === 'orders') { loadOrders(true); }
     else if (currentRoute === 'waste') { loadWaste(true); }
     else if (currentRoute === 'returns') { loadReturns(true); }
-    else if (currentRoute === 'browse') { S._prodsLoaded = false; loadBrowseData(); }
+    else if (currentRoute === 'browse') { S._prodsLoaded = false; S._quotasDay = -1; loadBrowseData(); }
     toast('↻ Refreshing...', 'info');
   }
 
@@ -347,7 +346,7 @@ const App = (() => {
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.5 | 14 Mar 2026</div>
+      <div class="sd-version">v1.6 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -470,6 +469,7 @@ const App = (() => {
       S.session = resp.session; S.deptMapping = resp.deptMapping; S.config = resp.config || {};
       S.permissions = resp.permissions || []; S.stores = resp.stores || [];
       S.departments = resp.departments || []; S.orderingChannels = resp.orderingChannels || [];
+      S.categories = resp.categories || []; S._catsLoaded = true;
       if (resp.session.access_level === 'no_access') { go('blocked', {}, true); return; }
       if (S.deptMapping && S.deptMapping.module_role === 'not_applicable') { go('blocked', {}, true); return; }
       const mr = S.deptMapping?.module_role;
