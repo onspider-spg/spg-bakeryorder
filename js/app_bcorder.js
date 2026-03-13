@@ -1,5 +1,5 @@
 /**
- * Version 1.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -44,7 +44,7 @@ const App = (() => {
     'browse':        { render: () => Scr.renderBrowse(),        title: 'Create Order',   onLoad: () => loadBrowseData() },
     'cart':          { render: () => Scr.renderCart(),           title: 'Cart' },
     'orders':        { render: () => Scr.renderOrders(),        title: 'View Orders',    onLoad: () => loadOrders() },
-    'order-detail':  { render: (p) => Scr.renderOrderDetail(p), title: 'Order Detail' },
+    'order-detail':  { render: (p) => Scr.renderOrderDetail(p), title: 'Order Detail', onLoad: (p) => loadOrderDetail(p.id) },
     'quota':         { render: () => Scr.renderQuota(),         title: 'Set Quota' },
     'waste':         { render: () => Scr.renderWaste(),         title: 'Waste Log',      onLoad: () => loadWaste() },
     'returns':       { render: () => Scr.renderReturns(),       title: 'Returns',        onLoad: () => loadReturns() },
@@ -159,6 +159,21 @@ const App = (() => {
       if (resp.success) { S.orders = resp.data; S._ordersLoaded = true; }
     } finally { S._ordersLoading = false; }
     Scr.fillOrders();
+  }
+
+  async function loadOrderDetail(orderId) {
+    if (!orderId) return;
+    try {
+      const resp = await API.getOrderDetail(orderId);
+      if (resp.success) {
+        S.currentOrder = resp.data;
+        Scr.fillOrderDetail();
+      } else {
+        toast(resp.message || 'ไม่พบออเดอร์', 'error');
+      }
+    } catch (e) {
+      toast('Network error', 'error');
+    }
   }
 
   async function loadWaste(force) {
@@ -279,7 +294,7 @@ const App = (() => {
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.1 | 14 Mar 2026</div>
+      <div class="sd-version">v1.2 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -429,7 +444,7 @@ const App = (() => {
     showProfilePopup, startOrder, hasPerm, refreshCurrent,
     openSidebar, closeSidebar, toggleSidebar,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
-    loadOrders, loadWaste, loadReturns, loadBrowseData, loadQuotas,
+    loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas,
     getStoreName, getDeptName,
     sydneyNow, fmtDate, todaySydney, tomorrowSydney, fmtDateThai, fmtDateAU,
   };

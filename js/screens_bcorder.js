@@ -1,9 +1,9 @@
 /**
- * Version 1.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Phase 2: Browse + Cart + Create Order
+ * Phase 3: Orders + Detail + Edit
  * ═══════════════════════════════════════════
  */
 
@@ -339,17 +339,252 @@ const Scr = (() => {
     }
   }
 
-  // ═══ PLACEHOLDER SCREENS ═══
+  // ═══ VIEW ORDERS ═══
+  let _orderFilter = 'all';
+  let _orderDateFrom = '';
+  let _orderDateTo = '';
+  let _orderShowCount = 5;
+
   function renderOrders() {
-    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">View Orders</div></div>
-      <div class="content" id="ordersContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+    const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
+    const t = App.sydneyNow(); t.setDate(t.getDate() + 1);
+    _orderDateFrom = _orderDateFrom || App.fmtDate(y);
+    _orderDateTo = _orderDateTo || App.fmtDate(t);
+    _orderFilter = 'all';
+    _orderShowCount = 5;
+
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">View Orders</div><div class="topbar-icon" onclick="App.loadOrders(true)" title="Refresh">↻</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅 ส่ง:</span>
+        <input type="date" class="date-inp" value="${_orderDateFrom}" onchange="Scr.setOrderDate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_orderDateTo}" onchange="Scr.setOrderDate('to',this.value)">
+        <span class="date-link" onclick="Scr.setOrderDatePreset('today')">วันนี้</span>
+        <span class="date-link" onclick="Scr.setOrderDatePreset('3day')">3 วัน</span>
+        <span class="date-link" onclick="Scr.setOrderDatePreset('all')">ทั้งหมด</span>
+      </div>
+      <div class="order-chips" id="orderChips"></div>
+      <div class="content" id="ordersContent"><div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
   }
+
   function fillOrders() {
-    const el = document.getElementById('ordersContent'); if (!el) return;
-    if (!App.S.orders.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">ยังไม่มี Order</div></div>'; return; }
-    el.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${App.S.orders.length} รายการ — Phase 3</div>`;
+    const el = document.getElementById('ordersContent');
+    const chipEl = document.getElementById('orderChips');
+    if (!el) return;
+
+    const all = App.S.orders || [];
+    // Filter by date range
+    let filtered = all;
+    if (_orderDateFrom) filtered = filtered.filter(o => (o.delivery_date || '') >= _orderDateFrom);
+    if (_orderDateTo) filtered = filtered.filter(o => (o.delivery_date || '') <= _orderDateTo);
+
+    // Count by status
+    const counts = { all: filtered.length, Pending: 0, Ordered: 0, Done: 0, Cancelled: 0 };
+    filtered.forEach(o => {
+      if (o.status === 'Pending') counts.Pending++;
+      else if (o.status === 'Ordered') counts.Ordered++;
+      else if (['Fulfilled', 'Delivered', 'InProgress'].includes(o.status)) counts.Done++;
+      else if (['Cancelled', 'Rejected'].includes(o.status)) counts.Cancelled++;
+    });
+
+    // Chips
+    if (chipEl) {
+      chipEl.innerHTML = [
+        { k: 'all', l: 'ทั้งหมด', c: counts.all },
+        { k: 'Pending', l: 'Pending', c: counts.Pending },
+        { k: 'Ordered', l: 'Ordered', c: counts.Ordered },
+        { k: 'Done', l: 'Done', c: counts.Done },
+        { k: 'Cancelled', l: 'Cancel', c: counts.Cancelled },
+      ].map(f => `<div class="chip${_orderFilter === f.k ? ' active' : ''}" onclick="Scr.setOrderFilter('${f.k}')">${f.l}${f.c ? ' (' + f.c + ')' : ''}</div>`).join('');
+    }
+
+    // Apply status filter
+    let shown = filtered;
+    if (_orderFilter === 'Pending') shown = filtered.filter(o => o.status === 'Pending');
+    else if (_orderFilter === 'Ordered') shown = filtered.filter(o => o.status === 'Ordered');
+    else if (_orderFilter === 'Done') shown = filtered.filter(o => ['Fulfilled', 'Delivered', 'InProgress'].includes(o.status));
+    else if (_orderFilter === 'Cancelled') shown = filtered.filter(o => ['Cancelled', 'Rejected'].includes(o.status));
+
+    if (shown.length === 0) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">ไม่พบ Order</div><div class="empty-desc">ลองเปลี่ยนช่วงวัน</div></div>';
+      return;
+    }
+
+    const visible = shown.slice(0, _orderShowCount);
+    const hasMore = shown.length > _orderShowCount;
+
+    el.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${shown.length} รายการ</div>
+      <div class="order-list">${visible.map(o => renderOrderCard(o)).join('')}</div>
+      ${hasMore ? `<div class="load-more" onclick="Scr.showMoreOrders()">แสดง ${_orderShowCount} จาก ${shown.length} · โหลดเพิ่มอีก 5 ↓</div>` : ''}`;
   }
-  function renderOrderDetail(p) { return `<div class="content"><div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Order Detail — Phase 3</div></div></div>`; }
+
+  function renderOrderCard(o) {
+    const items = (o.items || []);
+    const summary = items.slice(0, 3).map(i => {
+      const name = (i.product_name || '').split(' ')[0];
+      return name + ' ×' + i.qty_ordered + (i.is_urgent ? '⚡' : '');
+    }).join(', ');
+    const isDone = ['Fulfilled', 'Delivered'].includes(o.status);
+    const stsClass = { Pending: 'sts-pending', Ordered: 'sts-ordered', InProgress: 'sts-ordered', Fulfilled: 'sts-fulfilled', Delivered: 'sts-fulfilled', Cancelled: 'sts-cancelled', Rejected: 'sts-cancelled' }[o.status] || '';
+    const borderColor = { Pending: 'var(--red)', Ordered: 'var(--blue)', InProgress: 'var(--orange)', Fulfilled: 'var(--green)', Delivered: 'var(--green)' }[o.status] || 'var(--bd)';
+
+    return `<div class="ocard${isDone ? ' ocard-done' : ''}" style="border-left-color:${borderColor}" onclick="App.go('order-detail',{id:'${o.order_id}'})">
+      <div class="ocard-hd"><span class="ocard-id">${App.esc(o.order_id)}</span><span class="sts ${stsClass}">${o.status}</span></div>
+      <div class="ocard-sub">ส่ง ${App.fmtDateThai(o.delivery_date)} · ${App.esc(App.getStoreName(o.store_id))}</div>
+      <div class="ocard-items">${App.esc(summary)}</div>
+    </div>`;
+  }
+
+  function setOrderFilter(f) { _orderFilter = f; fillOrders(); }
+  function setOrderDate(which, val) { if (which === 'from') _orderDateFrom = val; else _orderDateTo = val; fillOrders(); }
+  function setOrderDatePreset(p) {
+    const today = App.todaySydney();
+    if (p === 'today') { _orderDateFrom = today; _orderDateTo = today; }
+    else if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 1); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _orderDateFrom = App.fmtDate(y); _orderDateTo = App.fmtDate(t); }
+    else { _orderDateFrom = ''; _orderDateTo = ''; }
+    fillOrders();
+  }
+  function showMoreOrders() { _orderShowCount += 5; fillOrders(); }
+
+  // ═══ ORDER DETAIL ═══
+  function renderOrderDetail(params) {
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('orders')">←</button><div class="toolbar-title">Order Detail</div></div>
+      <div class="content" id="detailContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillOrderDetail() {
+    const el = document.getElementById('detailContent');
+    if (!el) return;
+    const data = App.S.currentOrder;
+    if (!data) { el.innerHTML = '<div class="empty"><div class="empty-icon">❌</div><div class="empty-title">ไม่พบข้อมูล</div></div>'; return; }
+
+    const o = data.order;
+    const items = data.items || [];
+    const canEdit = ['Pending', 'Ordered'].includes(o.status);
+    const stsClass = { Pending: 'sts-pending', Ordered: 'sts-ordered', InProgress: 'sts-ordered', Fulfilled: 'sts-fulfilled', Delivered: 'sts-fulfilled', Cancelled: 'sts-cancelled', Rejected: 'sts-cancelled' }[o.status] || '';
+
+    el.innerHTML = `
+      <div class="detail-info">
+        <div class="detail-hd"><span class="detail-id">${App.esc(o.order_id)}</span><span class="sts ${stsClass}">${o.status}</span></div>
+        <div class="detail-grid">
+          <div><div class="detail-label">วันสั่ง</div><div class="detail-val">${App.fmtDateThai(o.order_date)}</div></div>
+          <div><div class="detail-label">วันส่ง</div><div class="detail-val">${App.fmtDateThai(o.delivery_date)}</div></div>
+          <div><div class="detail-label">โดย</div><div class="detail-val">${App.esc(o.display_name)}</div></div>
+          <div><div class="detail-label">ร้าน</div><div class="detail-val">${App.esc(App.getStoreName(o.store_id))}</div></div>
+        </div>
+        ${o.header_note ? '<div class="detail-note">📝 ' + App.esc(o.header_note) + '</div>' : ''}
+      </div>
+
+      <div class="detail-section-title">รายการ (${items.length})</div>
+      <div class="detail-items">${items.map(i => renderDetailItem(i, canEdit)).join('')}</div>
+
+      ${canEdit ? '<div style="margin-top:14px"><button class="btn btn-danger btn-full" onclick="Scr.confirmCancel(\'' + o.order_id + '\')">🚫 ยกเลิก Order</button></div>' : ''}
+      ${o.status === 'Cancelled' ? '<div style="margin-top:8px;font-size:12px;color:var(--red)">ยกเลิกเมื่อ ' + App.fmtDateThai(o.cancelled_at?.substring(0, 10)) + (o.cancel_reason ? ' — ' + App.esc(o.cancel_reason) : '') + '</div>' : ''}`;
+  }
+
+  function renderDetailItem(i, canEdit) {
+    const isFulfilled = !!i.fulfilment_status;
+    return `<div class="ditem${isFulfilled ? ' ditem-done' : ''}" onclick="${canEdit && !isFulfilled ? "Scr.showEditItem('" + i.item_id + "')" : ''}">
+      <div class="ditem-hd">
+        <div><div class="ditem-name">${App.esc(i.product_name)}</div>
+        <div class="ditem-meta">${i.qty_ordered} ${App.esc(i.unit)}${i.is_urgent ? ' · <span style="color:var(--orange)">⚡ URGENT</span>' : ''}</div>
+        ${i.stock_on_hand != null ? '<div class="ditem-stock">สต็อก: ' + i.stock_on_hand + ' → สั่ง: ' + i.qty_ordered + '</div>' : ''}
+        ${i.item_note ? '<div class="ditem-note">📝 ' + App.esc(i.item_note) + '</div>' : ''}
+        </div>
+        ${isFulfilled ? '<span class="ditem-ful">✓ ' + (i.fulfilment_status === 'full' ? 'full (' + i.qty_sent + ')' : i.fulfilment_status + ' (' + i.qty_sent + ')') + '</span>' : (canEdit ? '<span class="ditem-edit">แก้ไข ›</span>' : '')}
+      </div>
+    </div>`;
+  }
+
+  // ─── Edit Item Popup ───
+  function showEditItem(itemId) {
+    const data = App.S.currentOrder;
+    if (!data) return;
+    const item = data.items.find(i => i.item_id === itemId);
+    if (!item) return;
+
+    App.showDialog(`<div class="popup-sheet" style="width:380px">
+      <div class="popup-header"><div class="popup-title">แก้ไข — ${App.esc(item.product_name)}</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
+      <div style="padding:10px 14px;background:var(--bg3);border-radius:var(--rd);margin-bottom:12px;font-size:12px">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--t3)">เดิม</span><span style="font-weight:700">${item.qty_ordered} ${App.esc(item.unit)}</span></div>
+        ${item.stock_on_hand != null ? '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--t3)">สต็อก</span><span style="font-weight:600;color:var(--blue)">' + item.stock_on_hand + '</span></div>' : ''}
+      </div>
+      <div class="fg"><label class="lb">จำนวนใหม่ *</label><input class="inp" type="number" id="editQty" value="${item.qty_ordered}" min="0" style="width:120px;font-size:16px;font-weight:700;text-align:center"><div style="font-size:10px;color:var(--t4);margin-top:4px">ใส่ 0 = ลบรายการ</div></div>
+      <div class="fg"><label class="lb">Urgent</label><div style="display:flex;gap:8px"><div class="chip${item.is_urgent ? ' active' : ''}" id="editUrg1" onclick="document.getElementById('editUrg1').classList.add('active');document.getElementById('editUrg0').classList.remove('active')">⚡</div><div class="chip${!item.is_urgent ? ' active' : ''}" id="editUrg0" onclick="document.getElementById('editUrg0').classList.add('active');document.getElementById('editUrg1').classList.remove('active')">ปกติ</div></div></div>
+      <div class="fg"><label class="lb">Note</label><input class="inp" id="editNote" value="${App.esc(item.item_note || '')}"></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="editSaveBtn" onclick="Scr.saveEditItem('${item.item_id}','${data.order.order_id}')">💾 บันทึก</button></div>
+    </div>`);
+  }
+
+  async function saveEditItem(itemId, orderId) {
+    const btn = document.getElementById('editSaveBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+
+    const qty = parseInt(document.getElementById('editQty')?.value) || 0;
+    const isUrg = document.getElementById('editUrg1')?.classList.contains('active') || false;
+    const note = document.getElementById('editNote')?.value || '';
+
+    try {
+      const resp = await API.editOrder({
+        order_id: orderId,
+        items: [{ item_id: itemId, qty, is_urgent: isUrg, note }],
+      });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast(resp.message || '✅ แก้ไขแล้ว', 'success');
+        // Update memory
+        const item = App.S.currentOrder?.items?.find(i => i.item_id === itemId);
+        if (item) { item.qty_ordered = qty; item.is_urgent = isUrg; item.item_note = note; }
+        App.S._ordersLoaded = false; // force reload next time
+        fillOrderDetail(); // re-render detail from memory
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = '💾 บันทึก';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = '💾 บันทึก';
+    }
+  }
+
+  // ─── Cancel Order ───
+  function confirmCancel(orderId) {
+    App.showDialog(`<div class="popup-sheet" style="width:340px">
+      <div class="popup-title" style="margin-bottom:12px">🚫 ยกเลิก Order?</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:12px">${App.esc(orderId)}</div>
+      <div class="fg"><label class="lb">เหตุผล (ถ้ามี)</label><input class="inp" id="cancelReason" placeholder="เช่น สั่งผิด..."></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ไม่ใช่</button><button class="btn btn-danger" style="flex:1" id="cancelBtn" onclick="Scr.doCancel('${orderId}')">ยกเลิกเลย</button></div>
+    </div>`);
+  }
+
+  async function doCancel(orderId) {
+    const btn = document.getElementById('cancelBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'กำลังยกเลิก...';
+
+    const reason = document.getElementById('cancelReason')?.value || '';
+    try {
+      const resp = await API.cancelOrder({ order_id: orderId, reason });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast(resp.message || '✅ ยกเลิกแล้ว', 'success');
+        // Update memory
+        if (App.S.currentOrder?.order) App.S.currentOrder.order.status = 'Cancelled';
+        const idx = App.S.orders.findIndex(o => o.order_id === orderId);
+        if (idx >= 0) App.S.orders[idx].status = 'Cancelled';
+        fillOrderDetail();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = 'ยกเลิกเลย';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = 'ยกเลิกเลย';
+    }
+  }
+
+  // ═══ PLACEHOLDER SCREENS (Phase 4+) ═══
   function renderQuota() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Set Quota</div></div><div class="content"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Set Quota — Phase 4</div></div></div>`; }
   function renderWaste() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Waste Log</div></div><div class="content" id="wasteContent"><div class="skel skel-card"></div></div>`; }
   function fillWaste() { const el = document.getElementById('wasteContent'); if (!el) return; el.innerHTML = App.S.wasteLog.length ? `<div style="font-size:11px;color:var(--t3)">${App.S.wasteLog.length} รายการ — Phase 5</div>` : '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ยังไม่มี Waste</div></div>'; }
@@ -363,7 +598,9 @@ const Scr = (() => {
     renderBrowse, fillBrowse, filterProducts,
     setDate, step, toggleUrg, onStock1, onStock2,
     renderCart, removeCartItem, submitOrder,
-    renderOrders, fillOrders, renderOrderDetail,
+    renderOrders, fillOrders, renderOrderDetail, fillOrderDetail,
+    setOrderFilter, setOrderDate, setOrderDatePreset, showMoreOrders,
+    showEditItem, saveEditItem, confirmCancel, doCancel,
     renderQuota, renderWaste, fillWaste, renderReturns, fillReturns,
   };
 })();

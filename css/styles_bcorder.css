@@ -1,6 +1,6 @@
-/* Version 1.1 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.2 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Phase 2: Browse + Cart styles added */
+/* Phase 3: Orders + Detail + Edit styles added */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -373,6 +373,102 @@ html, body {
 .cart-note-section { margin: 16px 0; }
 .cart-submit { margin-top: 12px; padding: 14px; font-size: var(--fs-body); }
 
+/* ═══════════════════════════════════════════════════ */
+/* ═══ VIEW ORDERS (Phase 3) ═══ */
+/* ═══════════════════════════════════════════════════ */
+
+.order-date-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px var(--sp-lg); font-size: 11px;
+  border-bottom: 1px solid var(--bd2); background: var(--bg);
+}
+.date-inp {
+  flex: 1; padding: 4px 6px; border: 1px solid var(--bd);
+  border-radius: var(--rd); font-size: 11px; font-family: inherit;
+  color: var(--t1); background: var(--bg); max-width: 140px;
+}
+.date-link {
+  font-size: var(--fs-xs); color: var(--blue); cursor: pointer;
+  white-space: nowrap; font-weight: 500;
+}
+.date-link:hover { text-decoration: underline; }
+.order-chips {
+  display: flex; gap: 5px; padding: 8px var(--sp-lg);
+  overflow-x: auto; background: var(--bg);
+  border-bottom: 1px solid var(--bd2);
+}
+.order-chips .chip { padding: 3px 10px; font-size: var(--fs-xs); }
+
+/* ─── Order Card ─── */
+.order-list { display: flex; flex-direction: column; gap: 6px; }
+.ocard {
+  padding: 12px; border: 1px solid var(--bd2);
+  border-left: 3px solid var(--bd); border-radius: 0 var(--rd) var(--rd) 0;
+  cursor: pointer; background: var(--bg); transition: border-color .15s;
+}
+.ocard:hover { border-color: var(--acc); }
+.ocard-done { opacity: .7; }
+.ocard-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ocard-id { font-size: var(--fs-sm); font-weight: 700; color: var(--acc); }
+.ocard-sub { font-size: var(--fs-sm); color: var(--t2); }
+.ocard-items { font-size: 11px; color: var(--t3); margin-top: 2px; }
+
+/* ─── Load More ─── */
+.load-more {
+  text-align: center; padding: 12px; font-size: var(--fs-sm);
+  color: var(--acc); cursor: pointer; font-weight: 600;
+  border: 1px dashed var(--bd); border-radius: var(--rd);
+  background: var(--bg); margin-top: 6px;
+}
+.load-more:hover { background: var(--acc2); border-color: var(--acc); }
+
+/* ═══ ORDER DETAIL (Phase 3) ═══ */
+
+.detail-info {
+  background: var(--bg); border: 1px solid var(--bd2);
+  border-radius: var(--rd); padding: 14px 16px; margin-bottom: 12px;
+}
+.detail-hd {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+}
+.detail-id { font-size: var(--fs-h2); font-weight: 700; color: var(--acc); }
+.detail-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: var(--fs-sm);
+}
+.detail-label { color: var(--t3); font-size: var(--fs-xs); }
+.detail-val { font-weight: 600; }
+.detail-note {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--bd2);
+  font-size: var(--fs-sm); color: var(--t2);
+}
+.detail-section-title {
+  font-size: 13px; font-weight: 700; margin-bottom: 6px;
+}
+
+/* ─── Detail Item ─── */
+.detail-items {
+  background: var(--bg); border: 1px solid var(--bd2);
+  border-radius: var(--rd); padding: 4px 14px;
+}
+.ditem {
+  padding: 10px 0; border-bottom: 1px solid var(--bd2); cursor: pointer;
+}
+.ditem:last-child { border-bottom: none; }
+.ditem-done { opacity: .6; cursor: default; }
+.ditem-hd {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ditem-name { font-size: 13px; font-weight: 600; }
+.ditem-meta { font-size: 11px; color: var(--t3); }
+.ditem-stock { font-size: var(--fs-xs); color: var(--blue); margin-top: 1px; }
+.ditem-note { font-size: 11px; color: var(--t4); }
+.ditem-ful {
+  font-size: var(--fs-xs); padding: 2px 8px; border-radius: var(--rd-pill);
+  background: var(--green-bg); color: var(--green); font-weight: 600;
+  white-space: nowrap;
+}
+.ditem-edit { color: var(--acc); font-size: var(--fs-sm); white-space: nowrap; }
+
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -391,6 +487,11 @@ html, body {
   .stock-inp { font-size: 16px; padding: 6px 4px; }
   .stp-btn { width: 24px; height: 24px; font-size: 12px; }
   .stp-val { font-size: 15px; min-width: 18px; }
+  .order-date-bar { padding: 6px var(--sp-md); }
+  .order-chips { padding: 6px var(--sp-md); }
+  .detail-info { padding: 12px; }
+  .detail-id { font-size: var(--fs-body); }
+  .detail-items { padding: 4px 12px; }
   .popup-sheet { border-radius: var(--rd-lg) var(--rd-lg) 0 0; max-width: 100%; width: 100%; }
   .popup-overlay { align-items: flex-end; }
 }
