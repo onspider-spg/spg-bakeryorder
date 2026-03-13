@@ -1,5 +1,5 @@
 /**
- * Version 1.0 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.0.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Utilities
@@ -107,7 +107,7 @@ const App = (() => {
       <div class="topbar">
         <div class="hamburger" onclick="App.openSidebar()">☰</div>
         <div class="topbar-logo" onclick="location.href='${API.HOME_URL}'">SPG</div>
-        <div class="topbar-title">สั่งของเบเกอรี่ <span class="screen-name" id="tbTitle">${esc(title)}</span></div>
+        <div class="topbar-title">Bakery Order <span class="screen-name" id="tbTitle">${esc(title)}</span></div>
         <div class="topbar-right">
           <div class="topbar-icon" onclick="App.go('home')" title="Refresh">↻</div>
           <div class="topbar-avatar" onclick="App.showProfilePopup()">${esc(initial)}</div>
