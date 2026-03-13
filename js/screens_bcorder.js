@@ -1,9 +1,9 @@
 /**
- * Version 1.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.3 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Phase 3: Orders + Detail + Edit
+ * Phase 4: Set Quota
  * ═══════════════════════════════════════════
  */
 
@@ -584,8 +584,162 @@ const Scr = (() => {
     }
   }
 
-  // ═══ PLACEHOLDER SCREENS (Phase 4+) ═══
-  function renderQuota() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Set Quota</div></div><div class="content"><div class="empty"><div class="empty-icon">📊</div><div class="empty-title">Set Quota — Phase 4</div></div></div>`; }
+  // ═══ SET QUOTA ═══
+  const DAYS = ['จ','อ','พ','พฤ','ศ','ส','อา'];
+  // day_of_week: 0=Sun,1=Mon...6=Sat → display order: Mon=1,Tue=2,...Sun=0
+  const DAY_MAP = [1,2,3,4,5,6,0]; // display order → day_of_week
+  let _quotaSearch = '';
+
+  function renderQuota() {
+    _quotaSearch = '';
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Set Quota</div></div>
+      <div class="content" id="quotaContent"><div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillQuota() {
+    const el = document.getElementById('quotaContent');
+    if (!el) return;
+    const prods = App.S.products;
+    if (!prods.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">ไม่พบสินค้า</div></div>'; return; }
+
+    el.innerHTML = `<div class="q-wrap">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:8px">โควตาต่อวัน · ${prods.length} สินค้า</div>
+      <input class="search-input" placeholder="🔍 ค้นหา..." value="" oninput="Scr.filterQuota(this.value)" style="max-width:400px;margin-bottom:12px">
+      <div id="quotaDesk" class="q-desk-only"></div>
+      <div id="quotaMob" class="q-mob-only"></div>
+      <div style="display:flex;justify-content:center;margin:14px 0">
+        <button class="btn btn-primary" style="padding:10px 40px" id="quotaSaveBtn" onclick="Scr.saveQuota()">💾 บันทึก</button>
+      </div>
+    </div>`;
+    renderQuotaTable();
+    renderQuotaMobile();
+  }
+
+  function getFilteredProducts() {
+    const prods = App.S.products;
+    if (!_quotaSearch) return prods;
+    const s = _quotaSearch.toLowerCase();
+    return prods.filter(p => (p.product_name || '').toLowerCase().includes(s));
+  }
+
+  function filterQuota(val) {
+    _quotaSearch = val;
+    renderQuotaTable();
+    renderQuotaMobile();
+  }
+
+  // ─── Desktop: Table ───
+  function renderQuotaTable() {
+    const el = document.getElementById('quotaDesk');
+    if (!el) return;
+    const prods = getFilteredProducts();
+    const qm = App.S.quotaMap || {};
+
+    let rows = prods.map(p => {
+      const pq = qm[p.product_id] || {};
+      const cells = DAY_MAP.map(dow =>
+        `<td><input type="number" min="0" class="q-inp" id="qi-${p.product_id}-${dow}" value="${pq[dow] || 0}"></td>`
+      ).join('');
+      return `<tr><td class="q-name">${App.esc(p.product_name)}</td>${cells}</tr>`;
+    }).join('');
+
+    el.innerHTML = `<div class="q-card"><table class="q-tbl">
+      <thead><tr><th>สินค้า</th>${DAYS.map(d => '<th>' + d + '</th>').join('')}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  }
+
+  // ─── Mobile: Accordion ───
+  function renderQuotaMobile() {
+    const el = document.getElementById('quotaMob');
+    if (!el) return;
+    const prods = getFilteredProducts();
+    const qm = App.S.quotaMap || {};
+
+    el.innerHTML = prods.map(p => {
+      const pq = qm[p.product_id] || {};
+      const summary = DAY_MAP.map(dow => pq[dow] || 0).join('·');
+      return `<div class="qacc" id="qacc-${p.product_id}">
+        <div class="qacc-hd" onclick="Scr.toggleQuotaAcc('${p.product_id}')">
+          <div class="qacc-name">${App.esc(p.product_name)}</div>
+          <span class="qacc-sum">${summary}</span>
+          <span class="qacc-arr">▸</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleQuotaAcc(pid) {
+    const card = document.getElementById('qacc-' + pid);
+    if (!card) return;
+    const existing = card.querySelector('.qacc-body');
+    const arr = card.querySelector('.qacc-arr');
+
+    if (existing) {
+      // Collapse
+      existing.remove();
+      card.classList.remove('qacc-open');
+      if (arr) arr.textContent = '▸';
+      return;
+    }
+
+    // Expand
+    card.classList.add('qacc-open');
+    if (arr) arr.textContent = '▾';
+    const qm = App.S.quotaMap || {};
+    const pq = qm[pid] || {};
+
+    const body = document.createElement('div');
+    body.className = 'qacc-body';
+    body.innerHTML = `<div class="qacc-grid">${DAY_MAP.map((dow, i) =>
+      `<div><div class="qacc-day">${DAYS[i]}</div><input type="number" min="0" class="qacc-inp" id="qi-${pid}-${dow}" value="${pq[dow] || 0}"></div>`
+    ).join('')}</div>`;
+    card.appendChild(body);
+  }
+
+  async function saveQuota() {
+    const btn = document.getElementById('quotaSaveBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = 'กำลังบันทึก...';
+
+    // Collect all values from inputs (both desktop and mobile)
+    const quotas = [];
+    App.S.products.forEach(p => {
+      DAY_MAP.forEach(dow => {
+        const inp = document.getElementById('qi-' + p.product_id + '-' + dow);
+        if (inp) {
+          quotas.push({ product_id: p.product_id, day_of_week: dow, quota_qty: parseInt(inp.value) || 0 });
+        }
+      });
+    });
+
+    try {
+      const resp = await API.saveQuotas({
+        store_id: App.S.session.store_id,
+        dept_id: App.S.session.dept_id,
+        quotas,
+      });
+      if (resp.success) {
+        App.toast(resp.message || '✅ บันทึกแล้ว', 'success');
+        // Update memory
+        const newMap = {};
+        quotas.forEach(q => {
+          if (!newMap[q.product_id]) newMap[q.product_id] = {};
+          newMap[q.product_id][q.day_of_week] = q.quota_qty;
+        });
+        App.S.quotaMap = newMap;
+        App.S._quotasDay = -1; // invalidate browse quotas cache
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+      }
+    } catch (e) {
+      App.toast('Network error: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 บันทึก';
+    }
+  }
   function renderWaste() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Waste Log</div></div><div class="content" id="wasteContent"><div class="skel skel-card"></div></div>`; }
   function fillWaste() { const el = document.getElementById('wasteContent'); if (!el) return; el.innerHTML = App.S.wasteLog.length ? `<div style="font-size:11px;color:var(--t3)">${App.S.wasteLog.length} รายการ — Phase 5</div>` : '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ยังไม่มี Waste</div></div>'; }
   function renderReturns() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Returns</div></div><div class="content" id="returnsContent"><div class="skel skel-card"></div></div>`; }
@@ -601,6 +755,6 @@ const Scr = (() => {
     renderOrders, fillOrders, renderOrderDetail, fillOrderDetail,
     setOrderFilter, setOrderDate, setOrderDatePreset, showMoreOrders,
     showEditItem, saveEditItem, confirmCancel, doCancel,
-    renderQuota, renderWaste, fillWaste, renderReturns, fillReturns,
+    renderQuota, fillQuota, filterQuota, toggleQuotaAcc, saveQuota, renderWaste, fillWaste, renderReturns, fillReturns,
   };
 })();

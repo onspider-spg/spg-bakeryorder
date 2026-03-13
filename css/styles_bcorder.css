@@ -1,6 +1,6 @@
-/* Version 1.2 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.3 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Phase 3: Orders + Detail + Edit styles added */
+/* Phase 4: Quota table + accordion styles added */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -469,6 +469,82 @@ html, body {
 }
 .ditem-edit { color: var(--acc); font-size: var(--fs-sm); white-space: nowrap; }
 
+/* ═══════════════════════════════════════════════════ */
+/* ═══ SET QUOTA (Phase 4) ═══ */
+/* ═══════════════════════════════════════════════════ */
+
+.q-wrap { max-width: 1000px; margin: 0 auto; }
+.q-card {
+  background: var(--bg); border: 1px solid var(--bd);
+  border-radius: var(--rd); padding: 0; overflow: hidden;
+}
+
+/* Desktop table */
+.q-tbl { width: 100%; border-collapse: collapse; }
+.q-tbl thead { position: sticky; top: 0; z-index: 5; }
+.q-tbl th {
+  text-align: center; font-weight: 600; font-size: var(--fs-sm);
+  color: var(--t1); padding: 10px 8px; background: var(--bg);
+  border-bottom: 2px solid var(--bd); white-space: nowrap;
+}
+.q-tbl th:first-child { text-align: left; padding-left: 16px; }
+.q-tbl td {
+  padding: 8px 6px; border-bottom: 1px solid var(--bd2);
+  text-align: center; vertical-align: middle;
+}
+.q-name {
+  text-align: left; padding-left: 16px; font-weight: 600;
+  font-size: var(--fs-sm); word-wrap: break-word;
+  overflow-wrap: break-word; white-space: normal; line-height: 1.4;
+}
+.q-inp {
+  width: 100%; max-width: 70px; text-align: center;
+  border: 1px solid var(--bd2); border-radius: 4px;
+  padding: 6px 4px; font-size: 13px; font-weight: 600;
+  font-family: inherit; background: var(--bg);
+  margin: 0 auto; display: block;
+}
+.q-inp:focus { outline: none; border-color: var(--acc); }
+.q-tbl tbody tr:hover { background: var(--bg3); }
+
+/* Mobile accordion */
+.qacc {
+  background: var(--bg); border: 1px solid var(--bd);
+  border-radius: var(--rd); margin-bottom: 3px; overflow: hidden;
+}
+.qacc-open { border-color: var(--acc); }
+.qacc-hd {
+  display: flex; align-items: center;
+  padding: 10px 12px; cursor: pointer;
+}
+.qacc-open .qacc-hd { background: var(--acc2); }
+.qacc-name {
+  flex: 1; font-size: var(--fs-sm); font-weight: 600;
+}
+.qacc-open .qacc-name { color: var(--acc); font-weight: 700; }
+.qacc-sum { font-size: var(--fs-xs); color: var(--t4); }
+.qacc-open .qacc-sum { display: none; }
+.qacc-arr { font-size: var(--fs-sm); color: var(--t3); margin-left: 8px; }
+.qacc-open .qacc-arr { color: var(--acc); }
+.qacc-body {
+  padding: 8px 12px; border-top: 1px solid var(--bd2);
+}
+.qacc-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.qacc-day { font-size: 9px; color: var(--t3); margin-bottom: 2px; text-align: center; }
+.qacc-inp {
+  width: 100%; text-align: center;
+  border: 1px solid var(--bd); border-radius: 4px;
+  padding: 6px 2px; font-size: var(--fs-body); font-weight: 600;
+  font-family: inherit;
+}
+.qacc-inp:focus { outline: none; border-color: var(--acc); }
+
+/* Desktop/Mobile toggle */
+.q-desk-only { display: block; }
+.q-mob-only { display: none; }
+
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -492,6 +568,8 @@ html, body {
   .detail-info { padding: 12px; }
   .detail-id { font-size: var(--fs-body); }
   .detail-items { padding: 4px 12px; }
+  .q-desk-only { display: none; }
+  .q-mob-only { display: block; }
   .popup-sheet { border-radius: var(--rd-lg) var(--rd-lg) 0 0; max-width: 100%; width: 100%; }
   .popup-overlay { align-items: flex-end; }
 }
