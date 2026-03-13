@@ -1,5 +1,5 @@
 /**
- * Version 1.4 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -48,7 +48,7 @@ const App = (() => {
     'order-detail':  { render: (p) => Scr.renderOrderDetail(p), title: 'Order Detail', onLoad: (p) => loadOrderDetail(p.id) },
     'quota':         { render: () => Scr.renderQuota(),         title: 'Set Quota',      onLoad: () => loadQuotaScreen() },
     'waste':         { render: () => Scr.renderWaste(),         title: 'Waste Log',      onLoad: () => loadWasteScreen() },
-    'returns':       { render: () => Scr.renderReturns(),       title: 'Returns',        onLoad: () => loadReturns() },
+    'returns':       { render: () => Scr.renderReturns(),       title: 'Returns',        onLoad: () => loadReturnsScreen() },
   };
 
   // ─── NAVIGATE ───
@@ -235,6 +235,21 @@ const App = (() => {
     Scr.fillReturns();
   }
 
+  async function loadReturnsScreen() {
+    // Need products for form dropdown
+    if (!S._prodsLoaded && !S._prodsLoading) {
+      S._prodsLoading = true;
+      try {
+        const resp = await API.getProducts({ include_stock: 'false' });
+        if (resp.success) {
+          S.products = (resp.data || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+          S._prodsLoaded = true;
+        }
+      } finally { S._prodsLoading = false; }
+    }
+    await loadReturns();
+  }
+
   // ═══ CART MANAGEMENT ═══
 
   function getStockPoints() {
@@ -330,7 +345,7 @@ const App = (() => {
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.4 | 14 Mar 2026</div>
+      <div class="sd-version">v1.5 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;

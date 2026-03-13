@@ -1,9 +1,9 @@
 /**
- * Version 1.4 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Phase 5: Waste Log + Form
+ * Phase 6: Returns + Form + Detail
  * ═══════════════════════════════════════════
  */
 
@@ -939,8 +939,225 @@ const Scr = (() => {
       btn.disabled = false; btn.textContent = 'ลบเลย';
     }
   }
-  function renderReturns() { return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Returns</div></div><div class="content" id="returnsContent"><div class="skel skel-card"></div></div>`; }
-  function fillReturns() { const el = document.getElementById('returnsContent'); if (!el) return; el.innerHTML = App.S.returns.length ? `<div style="font-size:11px;color:var(--t3)">${App.S.returns.length} รายการ — Phase 6</div>` : '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ยังไม่มี Return</div></div>'; }
+  // ═══ RETURNS ═══
+  let _retDateFrom = '';
+  let _retDateTo = '';
+  let _retShowCount = 5;
+
+  function renderReturns() {
+    const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
+    const t = App.sydneyNow(); t.setDate(t.getDate() + 1);
+    _retDateFrom = _retDateFrom || App.fmtDate(y);
+    _retDateTo = _retDateTo || App.fmtDate(t);
+    _retShowCount = 5;
+
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Returns</div><div class="topbar-icon" onclick="App.loadReturns(true)" title="Refresh">↻</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅 วันที่:</span>
+        <input type="date" class="date-inp" value="${_retDateFrom}" onchange="Scr.setRetDate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_retDateTo}" onchange="Scr.setRetDate('to',this.value)">
+        <span class="date-link" onclick="Scr.setRetDatePreset('3day')">3 วัน</span>
+        <span class="date-link" onclick="Scr.setRetDatePreset('all')">ทั้งหมด</span>
+      </div>
+      <div class="content" id="returnsContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillReturns() {
+    const el = document.getElementById('returnsContent');
+    if (!el) return;
+    const all = App.S.returns || [];
+
+    let filtered = all;
+    if (_retDateFrom) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) >= _retDateFrom);
+    if (_retDateTo) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) <= _retDateTo);
+
+    if (!filtered.length) {
+      el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div></div><button class="btn btn-primary" onclick="Scr.showReturnForm()">➕ แจ้ง Return</button></div>
+        <div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ยังไม่มี Return</div></div>`;
+      return;
+    }
+
+    const visible = filtered.slice(0, _retShowCount);
+    const hasMore = filtered.length > _retShowCount;
+
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;color:var(--t3)">${filtered.length} รายการ</div>
+        <button class="btn btn-primary" onclick="Scr.showReturnForm()">➕ แจ้ง Return</button>
+      </div>
+      <div class="ret-list">${visible.map(r => renderReturnCard(r)).join('')}</div>
+      ${hasMore ? `<div class="load-more" onclick="Scr.showMoreReturns()">แสดง ${_retShowCount} จาก ${filtered.length} · โหลดเพิ่มอีก 5 ↓</div>` : ''}`;
+  }
+
+  function renderReturnCard(r) {
+    const resolved = ['Reworked', 'Wasted'].includes(r.status);
+    const stsStyle = {
+      Reported: 'background:#fffbeb;color:#92400e',
+      Received: 'background:#dbeafe;color:#1e40af',
+      Wasted: 'background:#fef2f2;color:#991b1b',
+      Reworked: 'background:#d1fae5;color:#065f46',
+    }[r.status] || 'background:var(--bg3);color:var(--t2)';
+    const borderColor = { Reported: 'var(--orange)', Received: 'var(--blue)', Wasted: 'var(--red)', Reworked: 'var(--green)' }[r.status] || 'var(--bd)';
+    const canEdit = r.status === 'Reported';
+
+    return `<div class="rcard${resolved ? ' rcard-done' : ''}" style="border-left-color:${borderColor}">
+      <div class="rcard-hd"><span class="rcard-id">${App.esc(r.return_id)}</span><span class="sts" style="${stsStyle}">${r.status}</span></div>
+      <div class="rcard-prod">${App.esc(r.product_name)} ×${r.quantity}</div>
+      <div class="rcard-meta">${App.esc(r.issue_type)} · ${App.esc(r.action === 'return_to_bakery' ? 'ส่งคืน BC' : 'ทิ้งที่ร้าน')}</div>
+      <div class="rcard-actions">
+        <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="Scr.showReturnDetail('${r.return_id}')">👁️ Detail</button>
+        ${canEdit ? `<button class="btn btn-outline" style="padding:3px 10px;font-size:11px;color:var(--acc);border-color:var(--acc)" onclick="Scr.showReturnEdit('${r.return_id}')">✏️ แก้ไข</button>` : resolved ? '<span style="font-size:10px;color:var(--t4);padding:4px 0">✅ BC ดำเนินการแล้ว</span>' : '<span style="font-size:10px;color:var(--t4);padding:4px 0">🔒 BC รับแล้ว</span>'}
+      </div>
+    </div>`;
+  }
+
+  function setRetDate(which, val) { if (which === 'from') _retDateFrom = val; else _retDateTo = val; fillReturns(); }
+  function setRetDatePreset(p) {
+    if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 1); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _retDateFrom = App.fmtDate(y); _retDateTo = App.fmtDate(t); }
+    else { _retDateFrom = ''; _retDateTo = ''; }
+    fillReturns();
+  }
+  function showMoreReturns() { _retShowCount += 5; fillReturns(); }
+
+  // ─── Return Detail Popup (Timeline) ───
+  function showReturnDetail(returnId) {
+    const r = App.S.returns.find(x => x.return_id === returnId);
+    if (!r) return;
+    const actionLabel = r.action === 'return_to_bakery' ? '📦 ส่งคืน BC' : '🗑️ ทิ้งที่ร้าน';
+    const stsStyle = { Reported: 'background:#fffbeb;color:#92400e', Received: 'background:#dbeafe;color:#1e40af', Wasted: 'background:#fef2f2;color:#991b1b', Reworked: 'background:#d1fae5;color:#065f46' }[r.status] || '';
+
+    // Timeline
+    let timeline = `<div class="ret-tl-item"><div class="ret-tl-dot" style="background:var(--orange)"></div><span><b>Reported</b> — ${App.esc(r.reported_by_name)} · ${App.fmtDateThai(r.created_at?.substring(0, 10))}</span></div>`;
+    if (r.status === 'Received') {
+      timeline += `<div class="ret-tl-item"><div class="ret-tl-dot" style="background:var(--blue)"></div><span><b>Received</b> — BC รับแล้ว</span></div>`;
+      timeline += `<div class="ret-tl-item ret-tl-pending"><div class="ret-tl-dot ret-tl-dot-pending"></div><span>รอดำเนินการ...</span></div>`;
+    } else if (['Reworked', 'Wasted'].includes(r.status)) {
+      timeline += `<div class="ret-tl-item"><div class="ret-tl-dot" style="background:var(--blue)"></div><span><b>Received</b></span></div>`;
+      timeline += `<div class="ret-tl-item"><div class="ret-tl-dot" style="background:var(--green)"></div><span><b>${r.status}</b>${r.resolved_by_name ? ' — ' + App.esc(r.resolved_by_name) : ''}</span></div>`;
+    } else {
+      timeline += `<div class="ret-tl-item ret-tl-pending"><div class="ret-tl-dot ret-tl-dot-pending"></div><span>รอ BC รับ...</span></div>`;
+    }
+
+    const canEdit = r.status === 'Reported';
+    App.showDialog(`<div class="popup-sheet" style="width:400px">
+      <div class="popup-header"><div class="popup-title">↩️ ${App.esc(r.return_id)}</div><span class="sts" style="${stsStyle}">${r.status}</span></div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">${App.esc(r.product_name)}</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">${r.quantity} ${App.esc(r.unit)} · ${App.esc(r.issue_type)}<br>${r.description ? App.esc(r.description) + '<br>' : ''}${actionLabel}</div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">📊 Timeline</div>
+      <div class="ret-timeline">${timeline}</div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">← ปิด</button>
+        ${canEdit ? `<button class="btn btn-primary" style="flex:1" onclick="App.closeDialog();Scr.showReturnEdit('${r.return_id}')">✏️ แก้ไข</button>` : ''}
+      </div>
+    </div>`);
+  }
+
+  // ─── Return Form Popup (Create) ───
+  function showReturnForm() {
+    const prods = App.S.products || [];
+    const opts = prods.map(p => `<option value="${p.product_id}">${App.esc(p.product_name)} (${App.esc(p.unit)})</option>`).join('');
+
+    App.showDialog(`<div class="popup-sheet">
+      <div class="popup-header"><div class="popup-title">↩️ แจ้ง Return</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
+      <div class="fg"><label class="lb">❶ สินค้า *</label><select class="sel" id="rfProduct"><option value="">-- เลือก --</option>${opts}</select></div>
+      <div class="fg"><label class="lb">❷ จำนวน *</label><input class="inp" type="number" id="rfQty" min="1" style="font-size:16px;font-weight:700"></div>
+      <div class="fg"><label class="lb">❸ ปัญหา *</label><select class="sel" id="rfIssue"><option value="Quality">Quality</option><option value="Wrong qty">Wrong qty</option><option value="Wrong product">Wrong product</option><option value="Damaged">Damaged</option></select></div>
+      <div class="fg"><label class="lb">❹ รายละเอียด</label><textarea class="inp" id="rfDesc" style="height:60px;resize:none" placeholder="อธิบาย..."></textarea></div>
+      <div class="fg"><label class="lb">❺ วันผลิต</label><input class="inp" type="date" id="rfProdDate"></div>
+      <div class="fg"><label class="lb">❻ การจัดการ *</label><select class="sel" id="rfAction"><option value="return_to_bakery">ส่งคืน BC</option><option value="discard_at_store">ทิ้งที่ร้าน</option></select></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="rfSaveBtn" onclick="Scr.saveReturn()">📤 ส่ง</button></div>
+    </div>`);
+  }
+
+  async function saveReturn() {
+    const btn = document.getElementById('rfSaveBtn');
+    if (!btn || btn.disabled) return;
+
+    const productId = document.getElementById('rfProduct')?.value;
+    const qty = parseInt(document.getElementById('rfQty')?.value) || 0;
+    const issueType = document.getElementById('rfIssue')?.value;
+    const desc = document.getElementById('rfDesc')?.value || '';
+    const prodDate = document.getElementById('rfProdDate')?.value || '';
+    const action = document.getElementById('rfAction')?.value;
+
+    if (!productId) { App.toast('เลือกสินค้า', 'error'); return; }
+    if (!qty) { App.toast('ใส่จำนวน', 'error'); return; }
+
+    btn.disabled = true; btn.textContent = 'กำลังส่ง...';
+    try {
+      const resp = await API.reportReturn({ product_id: productId, quantity: qty, issue_type: issueType, description: desc, production_date: prodDate, action });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast(resp.message || '✅ แจ้งแล้ว', 'success');
+        const prod = App.S.products.find(p => p.product_id === productId);
+        App.S.returns.unshift({
+          return_id: resp.data.return_id, product_id: productId, quantity: qty,
+          issue_type: issueType, description: desc, action,
+          status: action === 'discard_at_store' ? 'Wasted' : 'Reported',
+          product_name: prod?.product_name || productId, unit: prod?.unit || '',
+          reported_by_name: App.S.session?.display_name || '',
+          resolved_by_name: '', created_at: new Date().toISOString(),
+        });
+        if (action === 'discard_at_store') App.S._wasteLoaded = false; // invalidate waste
+        fillReturns();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = '📤 ส่ง';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = '📤 ส่ง';
+    }
+  }
+
+  // ─── Return Edit Popup (only Reported status) ───
+  function showReturnEdit(returnId) {
+    const r = App.S.returns.find(x => x.return_id === returnId);
+    if (!r || r.status !== 'Reported') { App.toast('แก้ไขไม่ได้ — สถานะ ' + (r?.status || '?'), 'error'); return; }
+
+    App.showDialog(`<div class="popup-sheet" style="width:380px">
+      <div class="popup-header"><div class="popup-title">✏️ แก้ไข — ${App.esc(r.product_name)}</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
+      <div style="padding:10px 14px;background:var(--bg3);border-radius:var(--rd);margin-bottom:12px;font-size:12px">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--t3)">เดิม</span><span style="font-weight:700">${r.quantity} ${App.esc(r.unit)}</span></div>
+      </div>
+      <div class="fg"><label class="lb">จำนวนใหม่</label><input class="inp" type="number" id="reQty" value="${r.quantity}" min="1" style="font-size:16px;font-weight:700;width:120px;text-align:center"></div>
+      <div class="fg"><label class="lb">ปัญหา</label><select class="sel" id="reIssue">
+        <option value="Quality"${r.issue_type === 'Quality' ? ' selected' : ''}>Quality</option>
+        <option value="Wrong qty"${r.issue_type === 'Wrong qty' ? ' selected' : ''}>Wrong qty</option>
+        <option value="Wrong product"${r.issue_type === 'Wrong product' ? ' selected' : ''}>Wrong product</option>
+        <option value="Damaged"${r.issue_type === 'Damaged' ? ' selected' : ''}>Damaged</option>
+      </select></div>
+      <div class="fg"><label class="lb">รายละเอียด</label><textarea class="inp" id="reDesc" style="height:50px;resize:none">${App.esc(r.description || '')}</textarea></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="reSaveBtn" onclick="Scr.saveReturnEdit('${r.return_id}')">💾 บันทึก</button></div>
+    </div>`);
+  }
+
+  async function saveReturnEdit(returnId) {
+    const btn = document.getElementById('reSaveBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+
+    const qty = parseInt(document.getElementById('reQty')?.value) || 0;
+    const issueType = document.getElementById('reIssue')?.value;
+    const desc = document.getElementById('reDesc')?.value || '';
+
+    try {
+      const resp = await API.editReturn({ return_id: returnId, quantity: qty, issue_type: issueType, description: desc });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast('✅ แก้ไขแล้ว', 'success');
+        const r = App.S.returns.find(x => x.return_id === returnId);
+        if (r) { r.quantity = qty; r.issue_type = issueType; r.description = desc; }
+        fillReturns();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = '💾 บันทึก';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = '💾 บันทึก';
+    }
+  }
   function fillBrowse() { /* called from App after data load */ filterProducts(); }
 
   return {
@@ -955,6 +1172,7 @@ const Scr = (() => {
     renderQuota, fillQuota, filterQuota, toggleQuotaAcc, saveQuota,
     renderWaste, fillWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
     showWasteForm, saveWaste, showWasteEdit, saveWasteEdit, confirmDeleteWaste, doDeleteWaste,
-    renderReturns, fillReturns,
+    renderReturns, fillReturns, setRetDate, setRetDatePreset, showMoreReturns,
+    showReturnDetail, showReturnForm, saveReturn, showReturnEdit, saveReturnEdit,
   };
 })();
