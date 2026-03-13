@@ -1,14 +1,27 @@
 /**
- * Version 1.5.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Phase 6: Returns + Form + Detail
+ * Fix: A-Z sort + Sortable Headers + URL update
  * ═══════════════════════════════════════════
  */
 
 const Scr = (() => {
   const HOME = API.HOME_URL;
+
+  // ─── SORT UTILITY (shared across all lists) ───
+  function sortArr(arr, key, dir) {
+    return [...arr].sort((a, b) => {
+      let va = a[key] ?? '', vb = b[key] ?? '';
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb)) * dir;
+    });
+  }
+  function sortIco(activeKey, key, dir) {
+    if (activeKey !== key) return '<span class="sort-ico">⇅</span>';
+    return '<span class="sort-ico sort-on">' + (dir > 0 ? '▲' : '▼') + '</span>';
+  }
 
   // ═══ STATUS SCREENS ═══
   function renderLoading() {
@@ -357,6 +370,8 @@ const Scr = (() => {
   let _orderDateFrom = '';
   let _orderDateTo = '';
   let _orderShowCount = 5;
+  let _orderSortKey = 'delivery_date';
+  let _orderSortDir = -1;
 
   function renderOrders() {
     const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
@@ -423,10 +438,17 @@ const Scr = (() => {
       return;
     }
 
+    // Sort
+    shown = sortArr(shown, _orderSortKey, _orderSortDir);
+
     const visible = shown.slice(0, _orderShowCount);
     const hasMore = shown.length > _orderShowCount;
 
-    el.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${shown.length} รายการ</div>
+    const sb = (k, lbl) => `<span class="sort-btn${_orderSortKey === k ? ' sort-active' : ''}" onclick="Scr.sortOrders('${k}')">${lbl} ${sortIco(_orderSortKey, k, _orderSortDir)}</span>`;
+
+    el.innerHTML = `<div class="list-header"><div style="font-size:11px;color:var(--t3)">${shown.length} รายการ</div>
+        <div class="sort-bar">Sort: ${sb('delivery_date','วันส่ง')} ${sb('order_id','ID')} ${sb('status','Status')}</div>
+      </div>
       <div class="order-list">${visible.map(o => renderOrderCard(o)).join('')}</div>
       ${hasMore ? `<div class="load-more" onclick="Scr.showMoreOrders()">แสดง ${_orderShowCount} จาก ${shown.length} · โหลดเพิ่มอีก 5 ↓</div>` : ''}`;
   }
@@ -448,7 +470,8 @@ const Scr = (() => {
     </div>`;
   }
 
-  function setOrderFilter(f) { _orderFilter = f; fillOrders(); }
+  function setOrderFilter(f) { _orderFilter = f; _orderShowCount = 5; fillOrders(); }
+  function sortOrders(key) { if (_orderSortKey === key) _orderSortDir *= -1; else { _orderSortKey = key; _orderSortDir = key === 'delivery_date' ? -1 : 1; } fillOrders(); }
   function setOrderDate(which, val) { if (which === 'from') _orderDateFrom = val; else _orderDateTo = val; fillOrders(); }
   function setOrderDatePreset(p) {
     const today = App.todaySydney();
@@ -757,6 +780,8 @@ const Scr = (() => {
   let _wasteDateFrom = '';
   let _wasteDateTo = '';
   let _wasteShowCount = 5;
+  let _wasteSortKey = 'waste_date';
+  let _wasteSortDir = -1;
 
   function renderWaste() {
     const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
@@ -793,12 +818,16 @@ const Scr = (() => {
       return;
     }
 
+    // Sort
+    filtered = sortArr(filtered, _wasteSortKey, _wasteSortDir);
+
     const visible = filtered.slice(0, _wasteShowCount);
     const hasMore = filtered.length > _wasteShowCount;
     const reasonColor = (r) => r === 'Expired' ? 'var(--red)' : r === 'Damaged' ? 'var(--orange)' : r === 'Production Error' ? 'var(--acc)' : 'var(--t2)';
+    const wsb = (k, lbl) => `<span class="sort-btn${_wasteSortKey === k ? ' sort-active' : ''}" onclick="Scr.sortWaste('${k}')">${lbl} ${sortIco(_wasteSortKey, k, _wasteSortDir)}</span>`;
 
-    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:11px;color:var(--t3)">${filtered.length} รายการ</div>
+    el.innerHTML = `<div class="list-header">
+        <div class="sort-bar">Sort: ${wsb('waste_date','วันที่')} ${wsb('product_name','สินค้า')} ${wsb('quantity','จำนวน')} ${wsb('reason','สาเหตุ')}</div>
         <button class="btn btn-primary" onclick="Scr.showWasteForm()">+ บันทึกใหม่</button>
       </div>
       <div class="waste-list">${visible.map(w => `<div class="wcard" style="border-left-color:${reasonColor(w.reason)}">
@@ -813,6 +842,7 @@ const Scr = (() => {
   }
 
   function setWasteDate(which, val) { if (which === 'from') _wasteDateFrom = val; else _wasteDateTo = val; fillWaste(); }
+  function sortWaste(key) { if (_wasteSortKey === key) _wasteSortDir *= -1; else { _wasteSortKey = key; _wasteSortDir = key === 'waste_date' ? -1 : 1; } fillWaste(); }
   function setWasteDatePreset(p) {
     if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 1); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _wasteDateFrom = App.fmtDate(y); _wasteDateTo = App.fmtDate(t); }
     else { _wasteDateFrom = ''; _wasteDateTo = ''; }
@@ -956,6 +986,8 @@ const Scr = (() => {
   let _retDateFrom = '';
   let _retDateTo = '';
   let _retShowCount = 5;
+  let _retSortKey = 'created_at';
+  let _retSortDir = -1;
 
   function renderReturns() {
     const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
@@ -991,11 +1023,15 @@ const Scr = (() => {
       return;
     }
 
+    // Sort
+    filtered = sortArr(filtered, _retSortKey, _retSortDir);
+
     const visible = filtered.slice(0, _retShowCount);
     const hasMore = filtered.length > _retShowCount;
+    const rsb = (k, lbl) => `<span class="sort-btn${_retSortKey === k ? ' sort-active' : ''}" onclick="Scr.sortReturns('${k}')">${lbl} ${sortIco(_retSortKey, k, _retSortDir)}</span>`;
 
-    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:11px;color:var(--t3)">${filtered.length} รายการ</div>
+    el.innerHTML = `<div class="list-header">
+        <div class="sort-bar">Sort: ${rsb('created_at','วันที่')} ${rsb('product_name','สินค้า')} ${rsb('status','Status')}</div>
         <button class="btn btn-primary" onclick="Scr.showReturnForm()">➕ แจ้ง Return</button>
       </div>
       <div class="ret-list">${visible.map(r => renderReturnCard(r)).join('')}</div>
@@ -1025,6 +1061,7 @@ const Scr = (() => {
   }
 
   function setRetDate(which, val) { if (which === 'from') _retDateFrom = val; else _retDateTo = val; fillReturns(); }
+  function sortReturns(key) { if (_retSortKey === key) _retSortDir *= -1; else { _retSortKey = key; _retSortDir = key === 'created_at' ? -1 : 1; } fillReturns(); }
   function setRetDatePreset(p) {
     if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 1); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _retDateFrom = App.fmtDate(y); _retDateTo = App.fmtDate(t); }
     else { _retDateFrom = ''; _retDateTo = ''; }
@@ -1179,13 +1216,13 @@ const Scr = (() => {
     renderBrowse, fillBrowse, filterProducts,
     setDate, step, toggleUrg, onStock1, onStock2,
     renderCart, removeCartItem, submitOrder,
-    renderOrders, fillOrders, renderOrderDetail, fillOrderDetail,
+    renderOrders, fillOrders, sortOrders, renderOrderDetail, fillOrderDetail,
     setOrderFilter, setOrderDate, setOrderDatePreset, showMoreOrders,
     showEditItem, saveEditItem, confirmCancel, doCancel,
     renderQuota, fillQuota, filterQuota, toggleQuotaAcc, saveQuota,
-    renderWaste, fillWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
+    renderWaste, fillWaste, sortWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
     showWasteForm, saveWaste, showWasteEdit, saveWasteEdit, confirmDeleteWaste, doDeleteWaste,
-    renderReturns, fillReturns, setRetDate, setRetDatePreset, showMoreReturns,
+    renderReturns, fillReturns, sortReturns, setRetDate, setRetDatePreset, showMoreReturns,
     showReturnDetail, showReturnForm, saveReturn, showReturnEdit, saveReturnEdit,
   };
 })();

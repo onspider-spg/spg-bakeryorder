@@ -1,5 +1,5 @@
 /**
- * Version 1.0 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.0.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
@@ -9,8 +9,8 @@
 
 const API = (() => {
   const BASE = 'https://ahvzblrfzhtrjhvbzdhg.supabase.co/functions/v1/bakeryorder';
-  const HOME_URL = 'https://onspider-spg.github.io/spg-home/';
-  const LOGOUT_URL = 'https://onspider-spg.github.io/spg-home/#logout';
+  const HOME_URL = 'https://onspider-spg.github.io/spg/';
+  const LOGOUT_URL = 'https://onspider-spg.github.io/spg/#logout';
   const TK = 'spg_token';
 
   // ─── Static cache (categories only — localStorage + TTL) ───

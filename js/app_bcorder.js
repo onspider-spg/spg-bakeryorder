@@ -1,5 +1,5 @@
 /**
- * Version 1.5.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities

@@ -1,6 +1,6 @@
-/* Version 1.5 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.5.2 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Phase 6: Returns card + timeline styles added */
+/* Fix: Sortable headers + URL update */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -598,6 +598,30 @@ html, body {
 .ret-tl-dot-pending {
   background: var(--bd); border: 1px dashed var(--t4);
 }
+
+/* ═══════════════════════════════════════════════════ */
+/* ═══ SORT + LIST HEADER ═══ */
+/* ═══════════════════════════════════════════════════ */
+
+.list-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; flex-wrap: wrap; gap: 6px;
+}
+.sort-bar {
+  display: flex; align-items: center; gap: 4px;
+  font-size: var(--fs-xs); color: var(--t3);
+}
+.sort-btn {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 2px 6px; border-radius: 4px;
+  font-size: var(--fs-xs); color: var(--t3);
+  cursor: pointer; white-space: nowrap;
+  transition: background .15s;
+}
+.sort-btn:hover { background: var(--bg3); color: var(--t1); }
+.sort-btn.sort-active { color: var(--acc); font-weight: 600; }
+.sort-ico { font-size: 8px; color: var(--t4); }
+.sort-ico.sort-on { color: var(--acc); font-size: 9px; }
 
 /* Desktop/Mobile toggle */
 .q-desk-only { display: block; }
