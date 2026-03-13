@@ -1,5 +1,5 @@
 /**
- * Version 1.5 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -27,6 +27,7 @@ const App = (() => {
     cart: [], deliveryDate: '', headerNote: '', editingOrderId: null,
     currentOrder: null,
     productSearch: '', productFilter: 'all',
+    stockInputs: {},  // { pid: value } or { pid: { s1: v, s2: v } } for 2pt
     sidebarCollapsed: false,
   };
 
@@ -296,6 +297,7 @@ const App = (() => {
 
   function startOrder() {
     S.cart = [];
+    S.stockInputs = {};
     S.deliveryDate = tomorrowSydney();
     S.headerNote = '';
     S.editingOrderId = null;

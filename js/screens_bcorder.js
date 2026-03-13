@@ -1,5 +1,5 @@
 /**
- * Version 1.5 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
@@ -128,21 +128,27 @@ const Scr = (() => {
     const isUrg = cart?.is_urgent || false;
     const pid = p.product_id;
     const qDisplay = quotaVal != null ? quotaVal : '—';
+    const maxLabel = p.max_order ? ' · Max ' + p.max_order : '';
+    const saved = App.S.stockInputs[pid]; // prefill from memory
 
     let stockHtml;
     if (stockPoints === 2) {
+      const v1 = saved?.s1 ?? '';
+      const v2 = saved?.s2 ?? '';
+      const sum = (v1 !== '' || v2 !== '') ? (parseFloat(v1) || 0) + (parseFloat(v2) || 0) : '—';
       stockHtml = `<div class="pcard-stock2">
-        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 1</div><input type="number" step="0.1" id="stk1-${pid}" class="stock-inp-sm" placeholder="—" oninput="Scr.onStock2(this,'${pid}')"></div>
-        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 2</div><input type="number" step="0.1" id="stk2-${pid}" class="stock-inp-sm" placeholder="—" oninput="Scr.onStock2(this,'${pid}')"></div>
+        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 1</div><input type="number" step="0.1" id="stk1-${pid}" class="stock-inp-sm" placeholder="—" value="${v1}" oninput="Scr.onStock2(this,'${pid}')"></div>
+        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 2</div><input type="number" step="0.1" id="stk2-${pid}" class="stock-inp-sm" placeholder="—" value="${v2}" oninput="Scr.onStock2(this,'${pid}')"></div>
       </div>
-      <div class="pcard-stock-sum">รวม <span id="stkSum-${pid}">—</span></div>`;
+      <div class="pcard-stock-sum">รวม <span id="stkSum-${pid}">${sum}</span></div>`;
     } else {
-      stockHtml = `<input type="number" step="0.1" id="stk-${pid}" class="stock-inp" placeholder="กรอก" oninput="Scr.onStock1(this,'${pid}')">`;
+      const v = saved ?? '';
+      stockHtml = `<input type="number" step="0.1" id="stk-${pid}" class="stock-inp" placeholder="กรอก" value="${v}" oninput="Scr.onStock1(this,'${pid}')">`;
     }
 
     return `<div class="pcard${isInCart ? ' pcard-active' : ''}" id="pc-${pid}">
       <div class="pcard-hd">
-        <div class="pcard-info"><div class="pcard-name">${App.esc(p.product_name)}</div><div class="pcard-meta">Min ${p.min_order || 1} · Step ${p.order_step || 1} · ${App.esc(p.unit || '')}</div></div>
+        <div class="pcard-info"><div class="pcard-name">${App.esc(p.product_name)}</div><div class="pcard-meta">Min ${p.min_order || 1} · Step ${p.order_step || 1}${maxLabel} · ${App.esc(p.unit || '')}</div></div>
         <div class="pcard-urg${isUrg ? ' on' : ''}" id="urg-${pid}" onclick="Scr.toggleUrg('${pid}')" title="Urgent">⚡</div>
       </div>
       <div class="pcard-labels"><div>โควตา</div><div>สต็อก</div><div>สั่ง</div></div>
@@ -160,17 +166,19 @@ const Scr = (() => {
     </div>`;
   }
 
-  // ─── STEPPER: Targeted update (RULE 09) ───
+  // ─── STEPPER: Targeted update (RULE 09) + max_order cap ───
   function step(pid, dir) {
     const p = App.S.products.find(pr => pr.product_id === pid);
     if (!p) return;
     const minOrd = p.min_order || 1;
     const stepVal = p.order_step || 1;
+    const maxOrd = p.max_order || 9999;
     const cart = App.getCartItem(pid);
     let qty = cart ? cart.qty : 0;
 
     if (dir > 0) {
       qty = qty === 0 ? minOrd : qty + stepVal;
+      if (qty > maxOrd) { App.toast(p.product_name + ': สูงสุด ' + maxOrd, 'warning'); qty = maxOrd; }
     } else {
       qty = qty - stepVal;
       if (qty < minOrd) qty = 0;
@@ -178,7 +186,7 @@ const Scr = (() => {
 
     App.setCartQty(pid, qty);
 
-    // Read stock value and save to cart
+    // Read stock value from memory (not DOM) and save to cart
     if (qty > 0) {
       const sv = readStockValue(pid);
       App.setCartStock(pid, sv);
@@ -191,42 +199,47 @@ const Scr = (() => {
     if (card) card.className = 'pcard' + (qty > 0 ? ' pcard-active' : '');
     const urgEl = document.getElementById('urg-' + pid);
     if (urgEl && qty === 0) urgEl.className = 'pcard-urg';
-    // Update stepper button colors
     card?.querySelectorAll('.stp-btn').forEach(b => b.className = 'stp-btn' + (qty > 0 ? ' stp-active' : ''));
     updateCartFooter();
   }
 
   function toggleUrg(pid) {
     const cart = App.getCartItem(pid);
-    if (!cart) return; // can only toggle urgent if in cart
+    if (!cart) return;
     App.toggleCartUrgent(pid);
     const el = document.getElementById('urg-' + pid);
     if (el) el.className = 'pcard-urg' + (cart.is_urgent ? ' on' : '');
   }
 
   function readStockValue(pid) {
+    const saved = App.S.stockInputs[pid];
     const sp = App.getStockPoints();
     if (sp === 2) {
-      const v1 = parseFloat(document.getElementById('stk1-' + pid)?.value) || 0;
-      const v2 = parseFloat(document.getElementById('stk2-' + pid)?.value) || 0;
-      return v1 + v2;
+      const v1 = parseFloat(saved?.s1) || 0;
+      const v2 = parseFloat(saved?.s2) || 0;
+      return (v1 || v2) ? v1 + v2 : null;
     }
-    return parseFloat(document.getElementById('stk-' + pid)?.value) || null;
+    return saved != null && saved !== '' ? parseFloat(saved) : null;
   }
 
+  // ─── Stock input handlers: save to S.stockInputs immediately ───
   function onStock1(el, pid) {
+    App.S.stockInputs[pid] = el.value;
     const cart = App.getCartItem(pid);
     if (cart) App.setCartStock(pid, parseFloat(el.value) || null);
   }
 
   function onStock2(el, pid) {
-    const v1 = parseFloat(document.getElementById('stk1-' + pid)?.value) || 0;
-    const v2 = parseFloat(document.getElementById('stk2-' + pid)?.value) || 0;
-    const sum = v1 + v2;
+    const v1 = document.getElementById('stk1-' + pid)?.value || '';
+    const v2 = document.getElementById('stk2-' + pid)?.value || '';
+    App.S.stockInputs[pid] = { s1: v1, s2: v2 };
+    const n1 = parseFloat(v1) || 0;
+    const n2 = parseFloat(v2) || 0;
+    const sum = n1 + n2;
     const sumEl = document.getElementById('stkSum-' + pid);
-    if (sumEl) sumEl.textContent = (v1 || v2) ? sum : '—';
+    if (sumEl) sumEl.textContent = (n1 || n2) ? sum : '—';
     const cart = App.getCartItem(pid);
-    if (cart) App.setCartStock(pid, sum);
+    if (cart) App.setCartStock(pid, (n1 || n2) ? sum : null);
   }
 
   function updateCartFooter() {
