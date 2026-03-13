@@ -1,5 +1,5 @@
 /**
- * Version 1.0.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.0.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Utilities
@@ -51,6 +51,7 @@ const App = (() => {
   const appEl = () => document.getElementById('app');
   let currentRoute = '';
   let currentParams = {};
+  let _fromPopstate = false; // true when navigating via browser back/forward
 
   // ─── ROUTES ───
   const ROUTES = {
@@ -69,7 +70,7 @@ const App = (() => {
   };
 
   // ─── NAVIGATE ───
-  function go(route, params = {}) {
+  function go(route, params = {}, replace = false) {
     const def = ROUTES[route];
     if (!def) return;
     currentRoute = route;
@@ -91,11 +92,14 @@ const App = (() => {
     const ct = appEl().querySelector('.content');
     if (ct) ct.scrollTop = 0;
 
-    // Hash
-    if (route === 'order-detail' && params.id) {
-      history.replaceState({ route, params }, '', '#order-detail/' + params.id);
+    // History — push for normal nav, replace for init/popstate
+    const hash = (route === 'order-detail' && params.id) ? '#order-detail/' + params.id : '#' + route;
+    if (_fromPopstate) {
+      _fromPopstate = false;
+    } else if (replace) {
+      history.replaceState({ route, params }, '', hash);
     } else {
-      history.replaceState({ route, params }, '', '#' + route);
+      history.pushState({ route, params }, '', hash);
     }
   }
 
@@ -428,7 +432,7 @@ const App = (() => {
       if (remaining <= 0) {
         clearInterval(_sessionTimer);
         API.clearToken();
-        go('invalid-token');
+        go('invalid-token', {}, true);
         toast('⏰ Session หมดอายุ กรุณา login ใหม่', 'error');
       } else if (remaining <= 10 * 60000 && remaining > 9.5 * 60000) {
         toast('⏰ Session จะหมดอายุใน ' + Math.round(remaining / 60000) + ' นาที', 'warning');
@@ -438,7 +442,7 @@ const App = (() => {
 
   // ═══ INIT — 3-Step Token Fallback ═══
   async function init() {
-    go('loading');
+    go('loading', {}, true);
 
     // Step 1: URL param ?token=xxx (from Home)
     const urlParams = new URLSearchParams(location.search);
@@ -450,14 +454,14 @@ const App = (() => {
 
     // Step 2: spg_token in localStorage (cross-module / new tab)
     const token = API.getToken();
-    if (!token) { go('no-token'); return; }
+    if (!token) { go('no-token', {}, true); return; }
 
     // Step 3: Call init_lite
     try {
       const resp = await API.initLite();
       if (!resp.success) {
         API.clearToken();
-        go('invalid-token');
+        go('invalid-token', {}, true);
         return;
       }
 
@@ -471,8 +475,8 @@ const App = (() => {
       S.orderingChannels = resp.orderingChannels || [];
 
       // Check access
-      if (resp.session.access_level === 'no_access') { go('blocked'); return; }
-      if (S.deptMapping && S.deptMapping.module_role === 'not_applicable') { go('blocked'); return; }
+      if (resp.session.access_level === 'no_access') { go('blocked', {}, true); return; }
+      if (S.deptMapping && S.deptMapping.module_role === 'not_applicable') { go('blocked', {}, true); return; }
 
       // Determine role
       const mr = S.deptMapping?.module_role;
@@ -480,19 +484,19 @@ const App = (() => {
       const tl = parseInt((S.session.tier_id || 'T9').replace('T', ''));
       S.sidebarRole = tl <= 2 ? 'admin' : S.role;
 
-      // Route to home or deep link
+      // Route to home or deep link (replace — first real screen)
       const { route: hashRoute, params: hashParams } = parseHash(location.hash);
       if (hashRoute && ROUTES[hashRoute] && !['loading', 'no-token', 'invalid-token', 'blocked'].includes(hashRoute)) {
-        go(hashRoute, hashParams);
+        go(hashRoute, hashParams, true);
       } else {
-        go('home');
+        go('home', {}, true);
       }
 
       startSessionMonitor();
 
     } catch (err) {
       console.error('Init error:', err);
-      go('invalid-token');
+      go('invalid-token', {}, true);
     }
   }
 
@@ -507,6 +511,7 @@ const App = (() => {
   // Browser back/forward
   window.addEventListener('popstate', (e) => {
     if (e.state?.route && ROUTES[e.state.route]) {
+      _fromPopstate = true;
       go(e.state.route, e.state.params || {});
     }
   });
