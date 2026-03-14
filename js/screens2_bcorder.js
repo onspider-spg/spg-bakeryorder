@@ -1,9 +1,9 @@
 /**
- * Version 1.0 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Phase 1B: BC Dashboard
+ * Phase 2: BC Dashboard + Accept Order
  * ═══════════════════════════════════════════
  */
 
@@ -46,7 +46,6 @@ const Scr2 = (() => {
     const total = d.today_total || 0;
     const pct = total > 0 ? Math.round(done / total * 100) : 0;
 
-    // KPIs
     const kpiEl = document.getElementById('bcKpis');
     if (kpiEl) {
       kpiEl.innerHTML = kpi('Pending', bs.Pending || 0, 'var(--red-bg)', 'var(--red)')
@@ -55,14 +54,12 @@ const Scr2 = (() => {
         + kpi('Done', done, 'var(--green-bg)', 'var(--green)');
     }
 
-    // Progress bar
     const progEl = document.getElementById('bcProgress');
     if (progEl) {
       progEl.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:2px"><span>Today</span><span style="color:var(--green)">${done}/${total}</span></div>
         <div class="bc-progress-bar"><div class="bc-progress-fill" style="width:${pct}%"></div></div>`;
     }
 
-    // Alerts
     const alertEl = document.getElementById('bcAlerts');
     if (alertEl) {
       let html = '';
@@ -78,13 +75,110 @@ const Scr2 = (() => {
     return `<div class="bc-kpi" style="background:${bg}"><div class="bc-kpi-label" style="color:${color}">${label}</div><div class="bc-kpi-val" style="color:${color}">${val}</div></div>`;
   }
 
-  // ═══ PLACEHOLDER SCREENS (Phase 2+) ═══
+  // ═══ ACCEPT ORDER ═══
+  function renderAccept(params) {
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('orders')">←</button><div class="toolbar-title">Accept Order</div></div>
+      <div class="content" id="acceptContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillAccept() {
+    const el = document.getElementById('acceptContent');
+    if (!el) return;
+    const data = App.S.currentOrder;
+    if (!data) { el.innerHTML = '<div class="empty"><div class="empty-icon">❌</div><div class="empty-title">ไม่พบข้อมูล</div></div>'; return; }
+
+    const o = data.order;
+    const items = data.items || [];
+    if (o.status !== 'Pending') {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">ℹ️</div><div class="empty-title">สถานะ ${App.esc(o.status)}</div><div class="empty-desc">Accept ได้เฉพาะ Pending เท่านั้น</div><button class="btn btn-outline" style="margin-top:12px" onclick="App.go('order-detail',{id:'${o.order_id}'})">ดูรายละเอียด →</button></div>`;
+      return;
+    }
+
+    const cutoffBadge = o.is_cutoff_violation ? '<span class="sts sts-pending" style="margin-left:6px">cutoff</span>' : '';
+
+    // Items table
+    const rows = items.map(i => `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd2);border-left:3px solid ${i.is_urgent ? 'var(--red)' : 'var(--bd)'};border-radius:0 var(--rd) var(--rd) 0;background:var(--bg)">
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${App.esc(i.product_name)}</div><div style="font-size:11px;color:var(--t3)">${i.qty_ordered} ${App.esc(i.unit)}${i.is_urgent ? ' · <span style="color:var(--red)">⚡ URGENT</span>' : ''}${i.item_note ? ' · 📝 ' + App.esc(i.item_note) : ''}</div></div>
+    </div>`).join('');
+
+    el.innerHTML = `
+      <div style="padding:12px 16px;background:var(--red-bg);border-radius:var(--rd);margin-bottom:10px;font-size:12px;color:var(--red);font-weight:600">
+        ${App.esc(o.order_id)} · ${App.esc(App.getStoreName(o.store_id))} · ${App.esc(o.display_name || '')} · ส่ง ${App.fmtDateThai(o.delivery_date)}${cutoffBadge}
+      </div>
+      ${o.header_note ? '<div style="padding:8px 12px;background:var(--bg3);border-radius:var(--rd);margin-bottom:10px;font-size:12px">📝 ' + App.esc(o.header_note) + '</div>' : ''}
+      <div style="font-size:11px;color:var(--t3);margin-bottom:6px">${items.length} รายการ</div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:14px">${rows}</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <button class="btn btn-green btn-full" id="acceptBtn" onclick="Scr2.doAccept('${o.order_id}')">✓ Accept All</button>
+        <button class="btn btn-danger btn-full" id="rejectBtn" onclick="Scr2.showRejectDialog('${o.order_id}')">✗ Reject</button>
+        <button class="btn btn-outline btn-full" style="color:var(--red);border-color:var(--red)" onclick="Scr.confirmCancel('${o.order_id}')">🚫 Cancel Order</button>
+      </div>`;
+  }
+
+  async function doAccept(orderId) {
+    const btn = document.getElementById('acceptBtn');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'กำลัง Accept...';
+    try {
+      const resp = await API.acceptOrder({ order_id: orderId });
+      if (resp.success) {
+        App.toast(resp.message || '✅ Accept เรียบร้อย', 'success');
+        // Update memory
+        if (App.S.currentOrder?.order) App.S.currentOrder.order.status = 'Ordered';
+        const idx = App.S.orders.findIndex(o => o.order_id === orderId);
+        if (idx >= 0) App.S.orders[idx].status = 'Ordered';
+        App.go('orders');
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = '✓ Accept All';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = '✓ Accept All';
+    }
+  }
+
+  function showRejectDialog(orderId) {
+    App.showDialog(`<div class="popup-sheet" style="width:340px">
+      <div class="popup-title" style="margin-bottom:12px">✗ Reject Order?</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:12px">${App.esc(orderId)}</div>
+      <div class="fg"><label class="lb">เหตุผล *</label><input class="inp" id="rejectReason" placeholder="เช่น วัตถุดิบไม่พอ..."></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ไม่ใช่</button><button class="btn btn-danger" style="flex:1" id="rejectConfirmBtn" onclick="Scr2.doReject('${orderId}')">Reject เลย</button></div>
+    </div>`);
+  }
+
+  async function doReject(orderId) {
+    const btn = document.getElementById('rejectConfirmBtn');
+    if (!btn || btn.disabled) return;
+    const reason = document.getElementById('rejectReason')?.value || '';
+    if (!reason.trim()) { App.toast('กรุณาใส่เหตุผล', 'error'); return; }
+
+    btn.disabled = true; btn.textContent = 'กำลัง Reject...';
+    try {
+      const resp = await API.rejectOrder({ order_id: orderId, reason });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast(resp.message || '✅ Reject เรียบร้อย', 'success');
+        if (App.S.currentOrder?.order) App.S.currentOrder.order.status = 'Rejected';
+        const idx = App.S.orders.findIndex(o => o.order_id === orderId);
+        if (idx >= 0) App.S.orders[idx].status = 'Rejected';
+        App.go('orders');
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = 'Reject เลย';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = 'Reject เลย';
+    }
+  }
+
+  // ═══ PLACEHOLDER SCREENS (Phase 3+) ═══
   function renderPlaceholder(title) {
     return `<div class="content"><div class="empty"><div class="empty-icon">🚧</div><div class="empty-title">${App.esc(title)}</div><div class="empty-desc">Coming in next update</div></div></div>`;
   }
 
-  function renderAccept()    { return renderPlaceholder('Accept Order'); }
-  function renderFulfil()    { return renderPlaceholder('Fulfilment'); }
+  function renderFulfil(p)   { return renderPlaceholder('Fulfilment'); }
   function renderPrint()     { return renderPlaceholder('Print Centre'); }
   function renderBCReturns() { return renderPlaceholder('Incoming Returns'); }
   function renderProducts()  { return renderPlaceholder('Manage Products'); }
@@ -92,7 +186,8 @@ const Scr2 = (() => {
 
   return {
     renderBCDashboard, fillBCDashboard,
-    renderAccept, renderFulfil, renderPrint,
+    renderAccept, fillAccept, doAccept, showRejectDialog, doReject,
+    renderFulfil, renderPrint,
     renderBCReturns, renderProducts, renderProdEdit,
   };
 })();

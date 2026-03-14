@@ -1,9 +1,9 @@
 /**
- * Version 1.7 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.7.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Phase 1B: BC Dashboard + Sidebar BC + Quota bug fix
+ * Phase 2: Accept route + loadAcceptOrder
  * ═══════════════════════════════════════════
  */
 
@@ -52,8 +52,8 @@ const App = (() => {
     'waste':         { render: () => Scr.renderWaste(),         title: 'Waste Log',      onLoad: () => loadWasteScreen() },
     'returns':       { render: () => Scr.renderReturns(),       title: 'Returns',        onLoad: () => loadReturnsScreen() },
     // BC-only routes (Phase 2+)
-    'accept':        { render: () => Scr2.renderAccept(),       title: 'Accept Order' },
-    'fulfil':        { render: () => Scr2.renderFulfil(),       title: 'Fulfilment' },
+    'accept':        { render: (p) => Scr2.renderAccept(p), title: 'Accept Order', onLoad: (p) => loadAcceptOrder(p.id) },
+    'fulfil':        { render: (p) => Scr2.renderFulfil(p), title: 'Fulfilment',   onLoad: (p) => loadAcceptOrder(p.id) },
     'print':         { render: () => Scr2.renderPrint(),        title: 'Print Centre' },
     'bc-returns':    { render: () => Scr2.renderBCReturns(),    title: 'Incoming Returns' },
     'products':      { render: () => Scr2.renderProducts(),     title: 'Manage Products' },
@@ -259,6 +259,21 @@ const App = (() => {
     }
   }
 
+  async function loadAcceptOrder(orderId) {
+    if (!orderId) return;
+    try {
+      const resp = await API.getOrderDetail(orderId);
+      if (resp.success) {
+        S.currentOrder = resp.data;
+        Scr2.fillAccept();
+      } else {
+        toast(resp.message || 'ไม่พบออเดอร์', 'error');
+      }
+    } catch (e) {
+      toast('Network error', 'error');
+    }
+  }
+
   async function loadQuotaScreen() {
     await ensureProducts();
     // Full 7-day quota map
@@ -427,7 +442,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.7 | 14 Mar 2026</div>
+      <div class="sd-version">v1.7.1 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -488,7 +503,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.7</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.7.1/div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {

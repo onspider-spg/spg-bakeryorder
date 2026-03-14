@@ -1,9 +1,9 @@
 /**
- * Version 1.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Edge Function: /functions/v1/bakeryorder
+ * Phase 2: accept_order + reject_order endpoints
  * ═══════════════════════════════════════════
  */
 
@@ -78,6 +78,8 @@ const API = (() => {
     createOrder:    (b)         => post('create_order', b),
     editOrder:      (b)         => post('edit_order', b),
     cancelOrder:    (b)         => post('cancel_order', b),
+    acceptOrder:    (b)         => post('accept_order', b),
+    rejectOrder:    (b)         => post('reject_order', b),
     createWaste:    (b)         => post('create_waste', b),
     editWaste:      (b)         => post('edit_waste', b),
     deleteWaste:    (b)         => post('delete_waste', b),

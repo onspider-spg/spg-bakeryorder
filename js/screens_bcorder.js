@@ -1,9 +1,9 @@
 /**
- * Version 1.5.7 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.8 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
- * screens_bcorder.js — Screen Renderers (Store)
- * Fix: Quota save diff + dual save buttons
+ * screens_bcorder.js — Screen Renderers (Store + shared)
+ * Phase 2: View Orders BC section filter + click action
  * ═══════════════════════════════════════════
  */
 
@@ -433,6 +433,7 @@ const Scr = (() => {
 
   // ═══ VIEW ORDERS ═══
   let _orderFilter = 'all';
+  let _orderSectionFilter = 'all';
   let _orderDateFrom = '';
   let _orderDateTo = '';
   let _orderShowCount = 5;
@@ -445,8 +446,10 @@ const Scr = (() => {
     _orderDateFrom = _orderDateFrom || App.fmtDate(y);
     _orderDateTo = _orderDateTo || App.fmtDate(t);
     _orderFilter = 'all';
+    _orderSectionFilter = 'all';
     _orderShowCount = 5;
 
+    const isBC = App.S.role === 'bc';
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">View Orders</div></div>
       <div class="order-date-bar">
         <span class="date-label">📅 ส่ง:</span>
@@ -457,6 +460,7 @@ const Scr = (() => {
         <span class="date-link" onclick="Scr.setOrderDatePreset('3day')">3 วัน</span>
         <span class="date-link" onclick="Scr.setOrderDatePreset('all')">ทั้งหมด</span>
       </div>
+      ${isBC ? '<div class="order-chips" id="sectionChips"></div>' : ''}
       <div class="order-chips" id="orderChips"></div>
       <div class="content" id="ordersContent"><div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
   }
@@ -464,13 +468,29 @@ const Scr = (() => {
   function fillOrders() {
     const el = document.getElementById('ordersContent');
     const chipEl = document.getElementById('orderChips');
+    const secEl = document.getElementById('sectionChips');
     if (!el) return;
+    const isBC = App.S.role === 'bc';
 
     const all = App.S.orders || [];
     // Filter by date range
     let filtered = all;
     if (_orderDateFrom) filtered = filtered.filter(o => (o.delivery_date || '') >= _orderDateFrom);
     if (_orderDateTo) filtered = filtered.filter(o => (o.delivery_date || '') <= _orderDateTo);
+
+    // BC: Section filter (filter by items' section_id)
+    if (isBC && _orderSectionFilter !== 'all') {
+      filtered = filtered.filter(o => (o.items || []).some(i => i.section_id === _orderSectionFilter));
+    }
+
+    // BC: Populate section chips
+    if (secEl && isBC) {
+      const secs = new Set();
+      all.forEach(o => (o.items || []).forEach(i => { if (i.section_id) secs.add(i.section_id); }));
+      const sorted = [...secs].sort();
+      secEl.innerHTML = `<div class="chip${_orderSectionFilter === 'all' ? ' active' : ''}" onclick="Scr.setOrderSection('all')">All</div>` +
+        sorted.map(s => `<div class="chip${_orderSectionFilter === s ? ' active' : ''}" onclick="Scr.setOrderSection('${s}')">${App.esc(s)}</div>`).join('');
+    }
 
     // Count by status
     const counts = { all: filtered.length, Pending: 0, Ordered: 0, Done: 0, Cancelled: 0 };
@@ -481,15 +501,16 @@ const Scr = (() => {
       else if (['Cancelled', 'Rejected'].includes(o.status)) counts.Cancelled++;
     });
 
-    // Chips
+    // Status chips
     if (chipEl) {
-      chipEl.innerHTML = [
+      const chips = [
         { k: 'all', l: 'ทั้งหมด', c: counts.all },
         { k: 'Pending', l: 'Pending', c: counts.Pending },
         { k: 'Ordered', l: 'Ordered', c: counts.Ordered },
         { k: 'Done', l: 'Done', c: counts.Done },
         { k: 'Cancelled', l: 'Cancel', c: counts.Cancelled },
-      ].map(f => `<div class="chip${_orderFilter === f.k ? ' active' : ''}" onclick="Scr.setOrderFilter('${f.k}')">${f.l}${f.c ? ' (' + f.c + ')' : ''}</div>`).join('');
+      ];
+      chipEl.innerHTML = chips.map(f => `<div class="chip${_orderFilter === f.k ? ' active' : ''}" onclick="Scr.setOrderFilter('${f.k}')">${f.l}${f.c ? ' (' + f.c + ')' : ''}</div>`).join('');
     }
 
     // Apply status filter
@@ -529,13 +550,24 @@ const Scr = (() => {
     const stsClass = { Pending: 'sts-pending', Ordered: 'sts-ordered', InProgress: 'sts-ordered', Fulfilled: 'sts-fulfilled', Delivered: 'sts-fulfilled', Cancelled: 'sts-cancelled', Rejected: 'sts-cancelled' }[o.status] || '';
     const borderColor = { Pending: 'var(--red)', Ordered: 'var(--blue)', InProgress: 'var(--orange)', Fulfilled: 'var(--green)', Delivered: 'var(--green)' }[o.status] || 'var(--bd)';
 
-    return `<div class="ocard${isDone ? ' ocard-done' : ''}" style="border-left-color:${borderColor}" onclick="App.go('order-detail',{id:'${o.order_id}'})">
+    // BC: Pending→accept, Ordered→fulfil; Store: always→order-detail
+    let onclick;
+    if (App.S.role === 'bc') {
+      if (o.status === 'Pending') onclick = `App.go('accept',{id:'${o.order_id}'})`;
+      else if (o.status === 'Ordered') onclick = `App.go('fulfil',{id:'${o.order_id}'})`;
+      else onclick = `App.go('order-detail',{id:'${o.order_id}'})`;
+    } else {
+      onclick = `App.go('order-detail',{id:'${o.order_id}'})`;
+    }
+
+    return `<div class="ocard${isDone ? ' ocard-done' : ''}" style="border-left-color:${borderColor}" onclick="${onclick}">
       <div class="ocard-hd"><span class="ocard-id">${App.esc(o.order_id)}</span><span class="sts ${stsClass}">${o.status}</span></div>
       <div class="ocard-sub">ส่ง ${App.fmtDateThai(o.delivery_date)} · ${App.esc(App.getStoreName(o.store_id))}</div>
       <div class="ocard-items">${App.esc(summary)}</div>
     </div>`;
   }
 
+  function setOrderSection(sec) { _orderSectionFilter = sec; _orderShowCount = 5; fillOrders(); }
   function setOrderFilter(f) { _orderFilter = f; _orderShowCount = 5; fillOrders(); }
   function sortOrders(key) { if (_orderSortKey === key) _orderSortDir *= -1; else { _orderSortKey = key; _orderSortDir = key === 'delivery_date' ? -1 : 1; } fillOrders(); }
   function setOrderDate(which, val) { if (which === 'from') _orderDateFrom = val; else _orderDateTo = val; fillOrders(); }
@@ -1318,7 +1350,7 @@ const Scr = (() => {
     setDate, step, toggleUrg, onStock1, onStock2,
     renderCart, removeCartItem, submitOrder,
     renderOrders, fillOrders, sortOrders, renderOrderDetail, fillOrderDetail,
-    setOrderFilter, setOrderDate, setOrderDatePreset, showMoreOrders,
+    setOrderFilter, setOrderDate, setOrderDatePreset, setOrderSection, showMoreOrders,
     showEditItem, saveEditItem, confirmCancel, doCancel,
     renderQuota, fillQuota, filterQuota, setQuotaCat, toggleQuotaAcc, saveQuota,
     renderWaste, fillWaste, sortWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
