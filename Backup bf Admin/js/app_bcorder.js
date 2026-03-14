@@ -1,9 +1,9 @@
 /**
- * Version 1.9 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.8 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Phase 7: Admin routes + sidebar + data loaders
+ * Phase 6: Manage Products route + loadProducts
  * ═══════════════════════════════════════════
  */
 
@@ -30,12 +30,6 @@ const App = (() => {
     productSearch: '', productFilter: 'all',
     stockInputs: {},  // { pid: value } or { pid: { s1: v, s2: v } } for 2pt
     sidebarCollapsed: false,
-    // Phase 7: Admin data (lazy loaded)
-    deptMappings: null,
-    wasteDash: null,
-    topProds: null,
-    cutoffData: null,
-    auditData: null,
   };
 
   const appEl = () => document.getElementById('app');
@@ -65,15 +59,6 @@ const App = (() => {
     'bc-returns':    { render: () => Scr2.renderBCReturns(),    title: 'Incoming Returns', onLoad: () => loadBCReturnsData() },
     'products':      { render: () => Scr2.renderProducts(),     title: 'Manage Products', onLoad: () => loadAdminProducts() },
     'prod-edit':     { render: (p) => Scr2.renderProdEdit(p),   title: 'Edit Product',    onLoad: (p) => loadProdEdit(p.id) },
-    // Phase 7: Admin + Reports routes
-    'visibility':       { render: () => Scr3.renderVisibility(),     title: 'Visibility',       onLoad: () => loadVisibility() },
-    'access':           { render: () => Scr3.renderAccess(),         title: 'User Access',      onLoad: () => loadAccessMatrix() },
-    'dept-mapping':     { render: () => Scr3.renderDeptMapping(),    title: 'Dept Mapping',     onLoad: () => loadDeptMappingData() },
-    'config':           { render: () => Scr3.renderConfig(),         title: 'Config',           onLoad: () => loadConfigScreen() },
-    'waste-dashboard':  { render: () => Scr3.renderWasteDashboard(), title: 'Waste Dashboard',  onLoad: () => loadWasteDashboard() },
-    'top-products':     { render: () => Scr3.renderTopProducts(),    title: 'Top Products',     onLoad: () => loadTopProducts() },
-    'cutoff':           { render: () => Scr3.renderCutoff(),         title: 'Cutoff',           onLoad: () => loadCutoffData() },
-    'audit':            { render: () => Scr3.renderAudit(),          title: 'Audit Trail',      onLoad: () => loadAuditData() },
   };
 
   // ─── NAVIGATE ───
@@ -83,8 +68,7 @@ const App = (() => {
     currentRoute = route;
     currentParams = params;
 
-    const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns','accept','fulfil','print','bc-returns','products','prod-edit',
-      'visibility','access','dept-mapping','config','waste-dashboard','top-products','cutoff','audit'];
+    const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns','accept','fulfil','print','bc-returns','products','prod-edit'];
     if (authScreens.includes(route) && S.session) {
       if (!_shellMounted) mountShell();
       const main = document.querySelector('.shell-main');
@@ -393,54 +377,6 @@ const App = (() => {
     await loadReturns();
   }
 
-  // ═══ Phase 7: ADMIN DATA LOADERS ═══
-
-  function loadConfigScreen() {
-    // Config already in S.config from init_lite — 0 API calls
-    Scr3.fillConfig();
-  }
-
-  async function loadDeptMappingData() {
-    if (S.deptMappings) { Scr3.fillDeptMapping(); return; }
-    try {
-      const resp = await API.getDeptMapping();
-      if (resp.success) { S.deptMappings = resp.data; }
-    } catch (e) { toast('Network error', 'error'); }
-    Scr3.fillDeptMapping();
-  }
-
-  async function loadVisibility() {
-    // Reuse getAllProducts — already has products + visibility + channels
-    if (S.adminProducts) { Scr3.fillVisibility(); return; }
-    await loadAdminProducts();
-    Scr3.fillVisibility();
-  }
-
-  async function loadAccessMatrix() {
-    // Placeholder — Phase 8
-    Scr3.fillAccess();
-  }
-
-  async function loadWasteDashboard() {
-    // Placeholder — Phase 9
-    Scr3.fillWasteDashboard();
-  }
-
-  async function loadTopProducts() {
-    // Placeholder — Phase 9
-    Scr3.fillTopProducts();
-  }
-
-  async function loadCutoffData() {
-    // Placeholder — Phase 10
-    Scr3.fillCutoff();
-  }
-
-  async function loadAuditData() {
-    // Placeholder — Phase 10
-    Scr3.fillAudit();
-  }
-
   // ═══ CART MANAGEMENT ═══
 
   function getStockPoints() {
@@ -520,7 +456,6 @@ const App = (() => {
     if (!sd) return;
     const isBC = S.sidebarRole === 'bc' || S.sidebarRole === 'admin';
     const isStore = S.sidebarRole === 'store' || S.sidebarRole === 'admin';
-    const isAdmin = S.sidebarRole === 'admin';
 
     let html = `<div class="sidebar-top"><div class="sidebar-toggle" onclick="App.toggleSidebar()">☰</div></div>`;
     html += sdItem('home', '◇', 'Dashboard');
@@ -546,7 +481,7 @@ const App = (() => {
     }
 
     if (isBC && S.role === 'bc') {
-      // BC sidebar — Orders + Records
+      // BC sidebar
       const bcOrderItems = [
         { r: 'orders', lbl: 'View Orders' },
         { r: 'print',  lbl: 'Print Centre' },
@@ -561,35 +496,13 @@ const App = (() => {
       html += sdGroup('records', '▤', 'Records', bcRecordItems.map(
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
       ).join(''));
-
-      // Admin group (perm-gated)
-      const adminItems = [];
-      if (hasPerm('fn_manage_products'))    adminItems.push({ r: 'products',     lbl: 'Manage Products' });
-      if (hasPerm('fn_manage_visibility'))  adminItems.push({ r: 'visibility',   lbl: 'Product Visibility' });
-      if (hasPerm('fn_manage_permissions')) adminItems.push({ r: 'access',       lbl: 'User Access' });
-      if (hasPerm('fn_manage_dept_mapping'))adminItems.push({ r: 'dept-mapping', lbl: 'Dept Mapping' });
-      if (hasPerm('fn_manage_config'))      adminItems.push({ r: 'config',       lbl: 'System Config' });
-      if (adminItems.length) {
-        html += sdGroup('admin', '⚙', 'Admin', adminItems.map(
-          i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
-        ).join(''));
-      }
-
-      // Reports group (perm-gated or admin)
-      const reportItems = [];
-      if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
-      if (isAdmin || hasPerm('fn_view_all_orders')) reportItems.push({ r: 'top-products', lbl: 'Top Products' });
-      if (isAdmin)                        reportItems.push({ r: 'cutoff',          lbl: 'Cutoff Violations' });
-      if (hasPerm('fn_view_audit_log'))   reportItems.push({ r: 'audit',           lbl: 'Audit Trail' });
-      if (reportItems.length) {
-        html += sdGroup('reports', '◈', 'Reports', reportItems.map(
-          i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
-        ).join(''));
+      if (hasPerm('fn_manage_products')) {
+        html += sdGroup('admin', '⚙', 'Admin', `<div class="sd-flyout-item${currentRoute === 'products' ? ' active' : ''}" data-route="products" onclick="App.go('products')">Manage Products</div>`);
       }
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.9 | 14 Mar 2026</div>
+      <div class="sd-version">v1.8 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -625,7 +538,6 @@ const App = (() => {
     if (!panel) return;
     const s = S.session || {};
     const init = (s.display_name || '?').charAt(0).toUpperCase();
-    const isAdmin = S.sidebarRole === 'admin';
     let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(init)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}</div></div></div>`;
     html += mobItem('home', '◇', 'Dashboard');
 
@@ -645,30 +557,13 @@ const App = (() => {
       html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
       html += mobItem('waste', '▤', 'Waste Log');
       html += mobItem('bc-returns', '▤', 'Incoming Returns');
-
-      // Admin section
-      const hasAnyAdmin = hasPerm('fn_manage_products') || hasPerm('fn_manage_visibility') || hasPerm('fn_manage_permissions') || hasPerm('fn_manage_dept_mapping') || hasPerm('fn_manage_config');
-      if (hasAnyAdmin) {
+      if (hasPerm('fn_manage_products')) {
         html += '<div style="height:4px"></div><div class="mob-sidebar-section">Admin</div>';
-        if (hasPerm('fn_manage_products'))     html += mobItem('products',     '⚙', 'Manage Products');
-        if (hasPerm('fn_manage_visibility'))   html += mobItem('visibility',   '⚙', 'Product Visibility');
-        if (hasPerm('fn_manage_permissions'))  html += mobItem('access',       '⚙', 'User Access');
-        if (hasPerm('fn_manage_dept_mapping')) html += mobItem('dept-mapping', '⚙', 'Dept Mapping');
-        if (hasPerm('fn_manage_config'))       html += mobItem('config',       '⚙', 'System Config');
-      }
-
-      // Reports section
-      const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
-      if (hasAnyReport) {
-        html += '<div style="height:4px"></div><div class="mob-sidebar-section">Reports</div>';
-        if (hasPerm('fn_view_waste'))                      html += mobItem('waste-dashboard', '◈', 'Waste Dashboard');
-        if (isAdmin || hasPerm('fn_view_all_orders'))      html += mobItem('top-products',    '◈', 'Top Products');
-        if (isAdmin)                                       html += mobItem('cutoff',          '◈', 'Cutoff Violations');
-        if (hasPerm('fn_view_audit_log'))                  html += mobItem('audit',           '◈', 'Audit Trail');
+        html += mobItem('products', '⚙', 'Manage Products');
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.9</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.8/div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -777,8 +672,6 @@ const App = (() => {
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,
     loadBCDashboard, loadPrintCentre, loadBCReturnsData, loadAdminProducts, loadProdEdit,
-    loadDeptMappingData, loadVisibility, loadAccessMatrix,
-    loadWasteDashboard, loadTopProducts, loadCutoffData, loadAuditData,
     getStoreName, getDeptName,
     sydneyNow, fmtDate, todaySydney, tomorrowSydney, fmtDateThai, fmtDateAU,
   };

@@ -1,6 +1,6 @@
-/* Version 1.6 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.5.5 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Phase 7: Admin screens (adm-list, adm-row, role-badge) */
+/* Add: Print Centre (ptbl, slip) */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -658,26 +658,6 @@ html, body {
 .bc-alert { padding: 5px 8px; border-radius: var(--rd); margin-bottom: 2px; font-size: var(--fs-sm); font-weight: 600; }
 .bc-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--t3); margin-bottom: 6px; }
 .bc-menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-
-/* ═══ ADMIN SCREENS (Phase 7) ═══ */
-.adm-list { display: flex; flex-direction: column; gap: 2px; }
-.adm-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; background: var(--bg); border: 1px solid var(--bd2);
-  border-radius: var(--rd); cursor: pointer; transition: border-color .15s;
-}
-.adm-row:hover { border-color: var(--acc); }
-.adm-row-off { opacity: .5; }
-.adm-row-info { flex: 1; min-width: 0; }
-.adm-row-label { font-size: var(--fs-sm); font-weight: 700; }
-.adm-row-desc { font-size: var(--fs-xs); color: var(--t3); margin-top: 1px; }
-.adm-row-key { font-size: 9px; color: var(--t4); margin-top: 1px; font-family: monospace; }
-.adm-row-val { font-size: var(--fs-body); font-weight: 700; color: var(--acc); white-space: nowrap; }
-.adm-row-edit { font-size: var(--fs-sm); color: var(--t4); flex-shrink: 0; }
-.adm-role-badge {
-  display: inline-block; padding: 2px 8px; border-radius: 4px;
-  font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
-}
 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 768px) {

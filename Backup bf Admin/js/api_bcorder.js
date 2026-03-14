@@ -1,9 +1,9 @@
 /**
- * Version 1.7 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Phase 7: Admin + Reports endpoints
+ * Phase 6: get_all_products + save_product
  * ═══════════════════════════════════════════
  */
 
@@ -62,7 +62,7 @@ const API = (() => {
   return {
     HOME_URL, LOGOUT_URL,
     getToken, setToken, clearToken, cache: _SC, logout,
-    // ─── Existing Endpoints (33) ───
+    // Endpoints
     initLite:       ()          => get('init_lite'),
     initBrowse:     (p = {})    => get('init_browse', p),
     getCategories:  ()          => get('get_categories'),
@@ -93,16 +93,5 @@ const API = (() => {
     saveQuotas:     (b)         => post('save_quotas', b),
     getAllProducts:  ()          => get('get_all_products'),
     saveProduct:    (b)         => post('save_product', b),
-    // ─── Phase 7+: Admin + Reports (10 new) ───
-    saveConfig:        (b)         => post('save_config', b),
-    getDeptMapping:    ()          => get('get_dept_mapping'),
-    saveDeptMapping:   (b)         => post('save_dept_mapping', b),
-    toggleVisibility:  (b)         => post('toggle_visibility', b),
-    getAccessMatrix:   ()          => get('get_access_matrix'),
-    togglePermission:  (b)         => post('toggle_permission', b),
-    getWasteDashboard: (p = {})    => get('get_waste_dashboard', p),
-    getTopProducts:    (p = {})    => get('get_top_products', p),
-    getCutoffViolations: (p = {})  => get('get_cutoff_violations', p),
-    getAuditTrail:     (p = {})    => get('get_audit_trail', p),
   };
 })();
