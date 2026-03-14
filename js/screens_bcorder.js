@@ -1,9 +1,9 @@
 /**
- * Version 1.5.5 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.6 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Fix: Auto-suggest recalculate + fillBrowse dedup
+ * Fix: Auto-suggest recalculate + fillBrowse dedup + Quota category filter
  * ═══════════════════════════════════════════
  */
 
@@ -691,9 +691,11 @@ const Scr = (() => {
   // day_of_week: 0=Sun,1=Mon...6=Sat → display order: Mon=1,Tue=2,...Sun=0
   const DAY_MAP = [1,2,3,4,5,6,0]; // display order → day_of_week
   let _quotaSearch = '';
+  let _quotaCatFilter = 'all';
 
   function renderQuota() {
     _quotaSearch = '';
+    _quotaCatFilter = 'all';
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Set Quota</div></div>
       <div class="content" id="quotaContent"><div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
   }
@@ -704,9 +706,14 @@ const Scr = (() => {
     const prods = App.S.products;
     if (!prods.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">ไม่พบสินค้า</div></div>'; return; }
 
+    const cats = App.S.categories || [];
+    const catChips = `<div class="chip${_quotaCatFilter === 'all' ? ' active' : ''}" onclick="Scr.setQuotaCat('all')">ทั้งหมด</div>` +
+      cats.map(c => `<div class="chip${_quotaCatFilter === c.cat_id ? ' active' : ''}" onclick="Scr.setQuotaCat('${c.cat_id}')">${App.esc(c.cat_name)}</div>`).join('');
+
     el.innerHTML = `<div class="q-wrap">
       <div style="font-size:11px;color:var(--t3);margin-bottom:8px">โควตาต่อวัน · ${prods.length} สินค้า</div>
-      <input class="search-input" placeholder="🔍 ค้นหา..." value="" oninput="Scr.filterQuota(this.value)" style="max-width:400px;margin-bottom:12px">
+      <input class="search-input" placeholder="🔍 ค้นหา..." value="${App.esc(_quotaSearch)}" oninput="Scr.filterQuota(this.value)" style="max-width:400px;margin-bottom:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${catChips}</div>
       <div id="quotaDesk" class="q-desk-only"></div>
       <div id="quotaMob" class="q-mob-only"></div>
       <div style="display:flex;justify-content:center;margin:14px 0">
@@ -718,16 +725,24 @@ const Scr = (() => {
   }
 
   function getFilteredProducts() {
-    const prods = App.S.products;
-    if (!_quotaSearch) return prods;
-    const s = _quotaSearch.toLowerCase();
-    return prods.filter(p => (p.product_name || '').toLowerCase().includes(s));
+    let prods = App.S.products;
+    if (_quotaCatFilter !== 'all') prods = prods.filter(p => p.cat_id === _quotaCatFilter || p.category_id === _quotaCatFilter);
+    if (_quotaSearch) {
+      const s = _quotaSearch.toLowerCase();
+      prods = prods.filter(p => (p.product_name || '').toLowerCase().includes(s));
+    }
+    return prods;
   }
 
   function filterQuota(val) {
     _quotaSearch = val;
     renderQuotaTable();
     renderQuotaMobile();
+  }
+
+  function setQuotaCat(catId) {
+    _quotaCatFilter = catId;
+    fillQuota();
   }
 
   // ─── Desktop: Table ───
@@ -1284,7 +1299,7 @@ const Scr = (() => {
     renderOrders, fillOrders, sortOrders, renderOrderDetail, fillOrderDetail,
     setOrderFilter, setOrderDate, setOrderDatePreset, showMoreOrders,
     showEditItem, saveEditItem, confirmCancel, doCancel,
-    renderQuota, fillQuota, filterQuota, toggleQuotaAcc, saveQuota,
+    renderQuota, fillQuota, filterQuota, setQuotaCat, toggleQuotaAcc, saveQuota,
     renderWaste, fillWaste, sortWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
     showWasteForm, saveWaste, showWasteEdit, saveWasteEdit, confirmDeleteWaste, doDeleteWaste,
     renderReturns, fillReturns, sortReturns, setRetDate, setRetDatePreset, showMoreReturns,
