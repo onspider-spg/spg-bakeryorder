@@ -1,9 +1,9 @@
 /**
- * Version 1.7 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.7.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Phase 7: Admin + Reports endpoints
+ * Fix: Remove notification, add uploadImage
  * ═══════════════════════════════════════════
  */
 
@@ -74,7 +74,6 @@ const API = (() => {
     getWasteLog:    (p = {})    => get('get_waste_log', p),
     getReturns:     (p = {})    => get('get_returns', p),
     getQuotas:      (p = {})    => get('get_quotas', p),
-    getNotifications: ()        => get('get_notifications'),
     createOrder:    (b)         => post('create_order', b),
     editOrder:      (b)         => post('edit_order', b),
     cancelOrder:    (b)         => post('cancel_order', b),
@@ -104,5 +103,6 @@ const API = (() => {
     getTopProducts:    (p = {})    => get('get_top_products', p),
     getCutoffViolations: (p = {})  => get('get_cutoff_violations', p),
     getAuditTrail:     (p = {})    => get('get_audit_trail', p),
+    uploadImage:       (b)         => post('upload_image', b),
   };
 })();

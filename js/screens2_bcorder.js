@@ -1,9 +1,9 @@
 /**
- * Version 1.5.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Print Centre + Products UI sections
+ * Fix: Product Edit section-card + Image Upload
  * ═══════════════════════════════════════════
  */
 
@@ -814,6 +814,8 @@ const Scr2 = (() => {
       <div class="content" id="prodEditContent"><div class="skel skel-card"></div></div>`;
   }
 
+  let _pendingImageUrl = ''; // holds uploaded image URL until save
+
   function fillProdEdit(productId) {
     const el = document.getElementById('prodEditContent');
     if (!el) return;
@@ -822,14 +824,14 @@ const Scr2 = (() => {
     const p = isNew ? {} : (App.S.adminProducts || []).find(x => x.product_id === productId);
     if (!isNew && !p) { el.innerHTML = '<div class="empty"><div class="empty-icon">\u274C</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32</div></div>'; return; }
 
+    _pendingImageUrl = p.image_url || '';
+
     const cats = App.S.categories || [];
     const catOpts = cats.map(c => `<option value="${c.cat_id}"${c.cat_id === (p.category_id || '') ? ' selected' : ''}>${App.esc(c.cat_name)}</option>`).join('');
 
-    // Sections from categories
     const secs = [...new Set(cats.map(c => c.section_id).filter(Boolean))].sort();
     const secOpts = secs.map(s => `<option value="${s}"${s === (p.section_id || '') ? ' selected' : ''}>${App.esc(s)}</option>`).join('');
 
-    // Visibility
     const channels = App.S.adminChannels || [];
     const vis = p.visibility || [];
     const visSet = new Set(vis.map(v => v.store_id + '|' + v.dept_id));
@@ -845,35 +847,101 @@ const Scr2 = (() => {
 
     const isActive = p.is_active !== false;
 
+    // Image preview
+    const imgPreview = _pendingImageUrl
+      ? `<img src="${App.esc(_pendingImageUrl)}" style="max-width:100%;max-height:120px;border-radius:var(--rd);object-fit:contain;margin-bottom:6px">`
+      : '';
+
     el.innerHTML = `<div style="max-width:500px;margin:0 auto">
-      <div style="font-size:15px;font-weight:700;margin-bottom:14px">${isNew ? '\u2795 Add Product' : '\u270F\uFE0F ' + App.esc(p.product_name)}</div>
-      <div class="fg"><label class="lb">\u2776 Product Name *</label><input class="inp" id="peNameInput" value="${App.esc(p.product_name || '')}"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="fg"><label class="lb">\u2777 Category *</label><select class="sel" id="peCatInput"><option value="">-- select --</option>${catOpts}</select></div>
-        <div class="fg"><label class="lb">\u2778 Section *</label><select class="sel" id="peSecInput"><option value="">-- select --</option>${secOpts}</select></div>
+      <div class="section-card" style="margin-bottom:10px">
+        <div style="font-size:15px;font-weight:700;margin-bottom:14px">${isNew ? '\u2795 Add Product' : '\u270F\uFE0F ' + App.esc(p.product_name)}</div>
+        <div class="fg"><label class="lb">\u2776 Product Name *</label><input class="inp" id="peNameInput" value="${App.esc(p.product_name || '')}"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg"><label class="lb">\u2777 Category *</label><select class="sel" id="peCatInput"><option value="">-- select --</option>${catOpts}</select></div>
+          <div class="fg"><label class="lb">\u2778 Section *</label><select class="sel" id="peSecInput"><option value="">-- select --</option>${secOpts}</select></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div class="fg"><label class="lb">\u2779 Unit</label><select class="sel" id="peUnitInput"><option value="pcs"${(p.unit || 'pcs') === 'pcs' ? ' selected' : ''}>pcs</option><option value="btl"${'btl' === p.unit ? ' selected' : ''}>btl</option><option value="pack"${'pack' === p.unit ? ' selected' : ''}>pack</option><option value="kg"${'kg' === p.unit ? ' selected' : ''}>kg</option><option value="box"${'box' === p.unit ? ' selected' : ''}>box</option></select></div>
+          <div class="fg"><label class="lb">\u277A Min Order</label><input class="inp" type="number" id="peMinInput" value="${p.min_order || 1}" min="1"></div>
+          <div class="fg"><label class="lb">\u277B Step</label><input class="inp" type="number" id="peStepInput" value="${p.order_step || 1}" min="1"></div>
+        </div>
+        <div class="fg"><label class="lb">\u277C Product Image</label>
+          <div id="peImgPreview">${imgPreview}</div>
+          <div class="img-drop-zone" id="peImgDrop" onclick="document.getElementById('peImgFile').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');Scr2.handleImageDrop(event)">
+            <div class="img-drop-icon">\uD83D\uDCF7</div>
+            <div class="img-drop-text">Drop image here or click to upload</div>
+            <div class="img-drop-hint">JPG, PNG, WebP — max 5MB</div>
+          </div>
+          <input type="file" id="peImgFile" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="Scr2.handleImageFile(this.files[0])">
+          <div id="peImgStatus" style="font-size:10px;color:var(--t3);margin-top:4px"></div>
+        </div>
+        <div class="fg"><label class="lb">Status</label><div style="display:flex;gap:8px">
+          <div class="chip${isActive ? ' active' : ''}" id="peStsActive" onclick="document.getElementById('peStsActive').classList.add('active');document.getElementById('peStsHidden').classList.remove('active')">Active</div>
+          <div class="chip${!isActive ? ' active' : ''}" id="peStsHidden" onclick="document.getElementById('peStsHidden').classList.add('active');document.getElementById('peStsActive').classList.remove('active')">Hidden</div>
+        </div></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div class="fg"><label class="lb">\u2779 Unit</label><select class="sel" id="peUnitInput"><option value="pcs"${(p.unit || 'pcs') === 'pcs' ? ' selected' : ''}>pcs</option><option value="btl"${'btl' === p.unit ? ' selected' : ''}>btl</option><option value="pack"${'pack' === p.unit ? ' selected' : ''}>pack</option><option value="kg"${'kg' === p.unit ? ' selected' : ''}>kg</option><option value="box"${'box' === p.unit ? ' selected' : ''}>box</option></select></div>
-        <div class="fg"><label class="lb">\u277A Min Order</label><input class="inp" type="number" id="peMinInput" value="${p.min_order || 1}" min="1"></div>
-        <div class="fg"><label class="lb">\u277B Step</label><input class="inp" type="number" id="peStepInput" value="${p.order_step || 1}" min="1"></div>
-      </div>
-      <div class="fg"><label class="lb">\u277C Image URL</label><input class="inp" id="peImgInput" placeholder="https://..." value="${App.esc(p.image_url || '')}"></div>
-      <div class="fg"><label class="lb">Status</label><div style="display:flex;gap:8px">
-        <div class="chip${isActive ? ' active' : ''}" id="peStsActive" onclick="document.getElementById('peStsActive').classList.add('active');document.getElementById('peStsHidden').classList.remove('active')">Active</div>
-        <div class="chip${!isActive ? ' active' : ''}" id="peStsHidden" onclick="document.getElementById('peStsHidden').classList.add('active');document.getElementById('peStsActive').classList.remove('active')">Hidden</div>
-      </div></div>
-      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;margin:14px 0 6px">\uD83D\uDC41\uFE0F Store Visibility</div>
-      <div style="font-size:10px;color:var(--t4);margin-bottom:6px">Select stores that can order this product</div>
-      <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:8px">${visRows}</div>
-      <div style="display:flex;gap:8px;font-size:10px;margin-bottom:14px">
-        <span style="color:var(--blue);cursor:pointer" onclick="document.querySelectorAll('.vis-cb').forEach(c=>c.checked=true)">\u2705 Select all</span>
-        <span style="color:var(--red);cursor:pointer" onclick="document.querySelectorAll('.vis-cb').forEach(c=>c.checked=false)">\u274C Deselect all</span>
+      <div class="section-card" style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;margin-bottom:6px">\uD83D\uDC41\uFE0F Store Visibility</div>
+        <div style="font-size:10px;color:var(--t4);margin-bottom:6px">Select stores that can order this product</div>
+        <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:8px">${visRows}</div>
+        <div style="display:flex;gap:8px;font-size:10px">
+          <span style="color:var(--blue);cursor:pointer" onclick="document.querySelectorAll('.vis-cb').forEach(c=>c.checked=true)">\u2705 Select all</span>
+          <span style="color:var(--red);cursor:pointer" onclick="document.querySelectorAll('.vis-cb').forEach(c=>c.checked=false)">\u274C Deselect all</span>
+        </div>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline" style="flex:1" onclick="App.go('products')">Cancel</button>
         <button class="btn btn-primary" style="flex:1" id="peSaveBtn" onclick="Scr2.saveProduct('${isNew ? '' : p.product_id}')">\uD83D\uDCBE Save</button>
       </div>
     </div>`;
+  }
+
+  // ─── Image Upload handlers ───
+  function handleImageDrop(e) {
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleImageFile(file);
+  }
+
+  async function handleImageFile(file) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { App.toast('ไฟล์ใหญ่เกิน 5MB', 'error'); return; }
+    if (!file.type.startsWith('image/')) { App.toast('กรุณาเลือกไฟล์รูปภาพ', 'error'); return; }
+
+    const statusEl = document.getElementById('peImgStatus');
+    const previewEl = document.getElementById('peImgPreview');
+    const dropEl = document.getElementById('peImgDrop');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--acc)">กำลังอัปโหลด...</span>';
+
+    // Read as base64
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      const ext = file.type.split('/')[1] || 'jpg';
+      try {
+        const resp = await API.uploadImage({ data: base64, ext, content_type: file.type });
+        if (resp.success && resp.data?.url) {
+          _pendingImageUrl = resp.data.url;
+          if (previewEl) previewEl.innerHTML = `<img src="${App.esc(resp.data.url)}" style="max-width:100%;max-height:120px;border-radius:var(--rd);object-fit:contain;margin-bottom:6px">`;
+          if (dropEl) dropEl.style.display = 'none';
+          if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✅ อัปโหลดเรียบร้อย</span> <span style="color:var(--blue);cursor:pointer" onclick="Scr2.resetImage()">เปลี่ยนรูป</span>';
+        } else {
+          if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">❌ ' + App.esc(resp.message || 'Upload failed') + '</span>';
+        }
+      } catch (e) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">❌ Network error</span>';
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function resetImage() {
+    _pendingImageUrl = '';
+    const previewEl = document.getElementById('peImgPreview');
+    const dropEl = document.getElementById('peImgDrop');
+    const statusEl = document.getElementById('peImgStatus');
+    if (previewEl) previewEl.innerHTML = '';
+    if (dropEl) dropEl.style.display = '';
+    if (statusEl) statusEl.innerHTML = '';
   }
 
   async function saveProduct(productId) {
@@ -886,7 +954,7 @@ const Scr2 = (() => {
     const unit = document.getElementById('peUnitInput')?.value || 'pcs';
     const minOrder = parseInt(document.getElementById('peMinInput')?.value) || 1;
     const step = parseInt(document.getElementById('peStepInput')?.value) || 1;
-    const imgUrl = document.getElementById('peImgInput')?.value?.trim() || '';
+    const imgUrl = _pendingImageUrl || '';
     const isActive = document.getElementById('peStsActive')?.classList.contains('active');
 
     if (!name) { App.toast('\u0E01\u0E23\u0E38\u0E13\u0E32\u0E43\u0E2A\u0E48\u0E0A\u0E37\u0E48\u0E2D\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32', 'error'); return; }
@@ -933,6 +1001,6 @@ const Scr2 = (() => {
     renderBCReturns, fillBCReturns, doReceive, doResolve, showBCRetDetail,
     setBCRetDate, setBCRetPreset, setBCRetFilter, showMoreBCRet,
     renderProducts, fillProducts, setProdTab, filterProds, setProdSection,
-    renderProdEdit, fillProdEdit, saveProduct,
+    renderProdEdit, fillProdEdit, saveProduct, handleImageDrop, handleImageFile, resetImage,
   };
 })();

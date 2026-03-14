@@ -1,9 +1,9 @@
 /**
- * Version 2.2.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 2.2.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: Topbar logo full name + Profile popup redesign
+ * Fix: Topbar gear+name, sidebar reorder, remove notification
  * ═══════════════════════════════════════════
  */
 
@@ -116,7 +116,9 @@ const App = (() => {
         <div class="topbar-logo" onclick="App.go('home')">SPG Bakery Center Order</div>
         <div class="topbar-right">
           <div class="topbar-icon" onclick="App.refreshCurrent()" title="Refresh">↻</div>
+          <div class="topbar-icon" onclick="App.go('config')" title="Settings">⚙</div>
           <div class="topbar-avatar" onclick="App.showProfilePopup()">${esc(initials)}</div>
+          <div class="topbar-name" onclick="App.showProfilePopup()">${esc(s.display_name)}</div>
         </div>
       </div>
       <div class="shell-body">
@@ -584,7 +586,19 @@ const App = (() => {
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
       ).join(''));
 
-      // Admin group (perm-gated)
+      // Reports group FIRST (perm-gated or admin)
+      const reportItems = [];
+      if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
+      if (isAdmin || hasPerm('fn_view_all_orders')) reportItems.push({ r: 'top-products', lbl: 'Top Products' });
+      if (isAdmin)                        reportItems.push({ r: 'cutoff',          lbl: 'Cutoff Violations' });
+      if (hasPerm('fn_view_audit_log'))   reportItems.push({ r: 'audit',           lbl: 'Audit Trail' });
+      if (reportItems.length) {
+        html += sdGroup('reports', '◈', 'Reports', reportItems.map(
+          i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
+        ).join(''));
+      }
+
+      // Admin group LAST (perm-gated)
       const adminItems = [];
       if (hasPerm('fn_manage_products'))    adminItems.push({ r: 'products',     lbl: 'Manage Products' });
       if (hasPerm('fn_manage_visibility'))  adminItems.push({ r: 'visibility',   lbl: 'Product Visibility' });
@@ -596,22 +610,10 @@ const App = (() => {
           i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
         ).join(''));
       }
-
-      // Reports group (perm-gated or admin)
-      const reportItems = [];
-      if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
-      if (isAdmin || hasPerm('fn_view_all_orders')) reportItems.push({ r: 'top-products', lbl: 'Top Products' });
-      if (isAdmin)                        reportItems.push({ r: 'cutoff',          lbl: 'Cutoff Violations' });
-      if (hasPerm('fn_view_audit_log'))   reportItems.push({ r: 'audit',           lbl: 'Audit Trail' });
-      if (reportItems.length) {
-        html += sdGroup('reports', '◈', 'Reports', reportItems.map(
-          i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
-        ).join(''));
-      }
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2.1 | 14 Mar 2026</div>
+      <div class="sd-version">v2.2.2 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -668,7 +670,17 @@ const App = (() => {
       html += mobItem('waste', '▤', 'Waste Log');
       html += mobItem('bc-returns', '▤', 'Incoming Returns');
 
-      // Admin section
+      // Reports section FIRST
+      const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
+      if (hasAnyReport) {
+        html += '<div style="height:4px"></div><div class="mob-sidebar-section">Reports</div>';
+        if (hasPerm('fn_view_waste'))                      html += mobItem('waste-dashboard', '◈', 'Waste Dashboard');
+        if (isAdmin || hasPerm('fn_view_all_orders'))      html += mobItem('top-products',    '◈', 'Top Products');
+        if (isAdmin)                                       html += mobItem('cutoff',          '◈', 'Cutoff Violations');
+        if (hasPerm('fn_view_audit_log'))                  html += mobItem('audit',           '◈', 'Audit Trail');
+      }
+
+      // Admin section LAST
       const hasAnyAdmin = hasPerm('fn_manage_products') || hasPerm('fn_manage_visibility') || hasPerm('fn_manage_permissions') || hasPerm('fn_manage_dept_mapping') || hasPerm('fn_manage_config');
       if (hasAnyAdmin) {
         html += '<div style="height:4px"></div><div class="mob-sidebar-section">Admin</div>';
@@ -678,19 +690,9 @@ const App = (() => {
         if (hasPerm('fn_manage_dept_mapping')) html += mobItem('dept-mapping', '⚙', 'Dept Mapping');
         if (hasPerm('fn_manage_config'))       html += mobItem('config',       '⚙', 'System Config');
       }
-
-      // Reports section
-      const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
-      if (hasAnyReport) {
-        html += '<div style="height:4px"></div><div class="mob-sidebar-section">Reports</div>';
-        if (hasPerm('fn_view_waste'))                      html += mobItem('waste-dashboard', '◈', 'Waste Dashboard');
-        if (isAdmin || hasPerm('fn_view_all_orders'))      html += mobItem('top-products',    '◈', 'Top Products');
-        if (isAdmin)                                       html += mobItem('cutoff',          '◈', 'Cutoff Violations');
-        if (hasPerm('fn_view_audit_log'))                  html += mobItem('audit',           '◈', 'Audit Trail');
-      }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.1</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.2</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
