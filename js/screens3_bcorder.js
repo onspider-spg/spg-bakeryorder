@@ -1,9 +1,9 @@
 /**
- * Version 1.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.3 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
- * Phase 9: Waste Dashboard + Top Products
+ * Phase 10: Cutoff Violations + Audit Trail (ALL COMPLETE)
  * ═══════════════════════════════════════════
  */
 
@@ -563,10 +563,173 @@ const Scr3 = (() => {
   function rptKpi(val, label, color) {
     return `<div class="rpt-kpi" style="border-left:3px solid ${color}"><div class="rpt-kpi-val" style="color:${color}">${val ?? 0}</div><div class="rpt-kpi-label">${label}</div></div>`;
   }
-  function renderCutoff()         { return placeholder('Cutoff Violations', '⏰'); }
-  function fillCutoff()           {}
-  function renderAudit()          { return placeholder('Audit Trail', '📋'); }
-  function fillAudit()            {}
+  // ═══════════════════════════════════════════
+  // CUTOFF VIOLATIONS (Phase 10)
+  // ═══════════════════════════════════════════
+
+  let _coDateFrom = '';
+  let _coDateTo = '';
+  let _coShowCount = 10;
+
+  function renderCutoff() {
+    const d30 = new Date(App.sydneyNow()); d30.setDate(d30.getDate() - 30);
+    _coDateFrom = App.fmtDate(d30);
+    _coDateTo = App.todaySydney();
+    _coShowCount = 10;
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Cutoff Violations</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅</span>
+        <input type="date" class="date-inp" value="${_coDateFrom}" onchange="Scr3.setCODate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_coDateTo}" onchange="Scr3.setCODate('to',this.value)">
+        <span class="date-link" onclick="Scr3.setCOPreset('today')">Today</span>
+        <span class="date-link" onclick="Scr3.setCOPreset('30d')">30d</span>
+      </div>
+      <div class="content" id="coContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillCutoff() {
+    const el = document.getElementById('coContent');
+    if (!el) return;
+    const data = App.S.cutoffData;
+    if (!data) { el.innerHTML = '<div class="empty"><div class="empty-icon">⏰</div><div class="empty-title">กำลังโหลด...</div></div>'; return; }
+
+    const list = data || [];
+    if (!list.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">ไม่มี Cutoff Violation</div><div class="empty-desc">ในช่วงเวลาที่เลือก</div></div>';
+      return;
+    }
+
+    const visible = list.slice(0, _coShowCount);
+    const hasMore = list.length > _coShowCount;
+
+    const stsStyle = (s) => {
+      if (s === 'Pending') return 'background:var(--red-bg);color:var(--red)';
+      if (s === 'Ordered') return 'background:var(--blue-bg);color:#1e40af';
+      if (s === 'Fulfilled' || s === 'Delivered') return 'background:var(--green-bg);color:#065f46';
+      return 'background:var(--bg3);color:var(--t3)';
+    };
+
+    const rows = visible.map(o => `<tr style="border-left:3px solid ${o.status === 'Pending' ? 'var(--red)' : 'var(--bd)'}">
+      <td style="font-weight:700;color:var(--acc)">${App.esc(o.order_id)}</td>
+      <td>${App.esc(App.getStoreName(o.store_id) || o.store_id)}</td>
+      <td style="font-size:10px">${App.esc(o.ordered_time || '')}</td>
+      <td>${App.fmtDateAU(o.delivery_date)}</td>
+      <td><span class="sts" style="${stsStyle(o.status)}">${App.esc(o.status)}</span></td>
+    </tr>`).join('');
+
+    el.innerHTML = `<div style="max-width:900px;margin:0 auto">
+      <div style="font-size:10px;color:var(--t3);margin-bottom:6px">⏰ ${list.length} violations</div>
+      <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd);overflow-x:auto">
+        <table class="adm-tbl"><thead><tr><th>Order</th><th>Store</th><th>Ordered At</th><th>Delivery</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+      </div>
+      ${hasMore ? `<div class="load-more" onclick="Scr3.showMoreCO()">แสดง ${_coShowCount} จาก ${list.length} · โหลดเพิ่ม 10 ↓</div>` : ''}
+    </div>`;
+  }
+
+  function setCODate(which, val) { if (which === 'from') _coDateFrom = val; else _coDateTo = val; _coShowCount = 10; App.loadCutoffData(_coDateFrom, _coDateTo); }
+  function setCOPreset(p) {
+    if (p === 'today') { _coDateFrom = App.todaySydney(); _coDateTo = App.todaySydney(); }
+    else { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _coDateFrom = App.fmtDate(d); _coDateTo = App.todaySydney(); }
+    _coShowCount = 10;
+    App.loadCutoffData(_coDateFrom, _coDateTo);
+  }
+  function showMoreCO() { _coShowCount += 10; fillCutoff(); }
+
+  // ═══════════════════════════════════════════
+  // AUDIT TRAIL (Phase 10)
+  // ═══════════════════════════════════════════
+
+  let _auDateFrom = '';
+  let _auDateTo = '';
+  let _auFilter = 'all';
+  let _auShowCount = 15;
+
+  function renderAudit() {
+    const d30 = new Date(App.sydneyNow()); d30.setDate(d30.getDate() - 30);
+    _auDateFrom = App.fmtDate(d30);
+    _auDateTo = App.todaySydney();
+    _auFilter = 'all';
+    _auShowCount = 15;
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Audit Trail</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅</span>
+        <input type="date" class="date-inp" value="${_auDateFrom}" onchange="Scr3.setAUDate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_auDateTo}" onchange="Scr3.setAUDate('to',this.value)">
+        <span class="date-link" onclick="Scr3.setAUPreset('30d')">30d</span>
+        <span class="date-link" onclick="Scr3.setAUPreset('all')">ทั้งหมด</span>
+      </div>
+      <div class="order-chips" id="auChips"></div>
+      <div class="content" id="auContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillAudit() {
+    const el = document.getElementById('auContent');
+    const chipEl = document.getElementById('auChips');
+    if (!el) return;
+    const all = App.S.auditData || [];
+
+    // Count by type
+    const counts = { all: all.length };
+    all.forEach(a => { counts[a.action_type] = (counts[a.action_type] || 0) + 1; });
+
+    // Chips
+    const typeLabels = { permission: '🔐 Perm', dept_mapping: '🏢 Dept', config: '⚙ Config', product: '📦 Product', visibility: '👁️ Vis' };
+    if (chipEl) {
+      let chips = `<div class="chip${_auFilter === 'all' ? ' active' : ''}" onclick="Scr3.setAUFilter('all')">All (${all.length})</div>`;
+      for (const [type, label] of Object.entries(typeLabels)) {
+        if (counts[type]) chips += `<div class="chip${_auFilter === type ? ' active' : ''}" onclick="Scr3.setAUFilter('${type}')">${label} (${counts[type]})</div>`;
+      }
+      chipEl.innerHTML = chips;
+    }
+
+    // Filter
+    let filtered = all;
+    if (_auFilter !== 'all') filtered = all.filter(a => a.action_type === _auFilter);
+
+    if (!filtered.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">ไม่มี Audit Log</div></div>';
+      return;
+    }
+
+    const visible = filtered.slice(0, _auShowCount);
+    const hasMore = filtered.length > _auShowCount;
+
+    const badgeStyle = (type) => {
+      const map = { permission: 'background:var(--acc2);color:var(--acc)', dept_mapping: 'background:var(--blue-bg);color:var(--blue)', config: 'background:#fffbeb;color:#92400e', product: 'background:var(--green-bg);color:var(--green)', visibility: 'background:var(--bg3);color:var(--t2)' };
+      return map[type] || 'background:var(--bg3);color:var(--t2)';
+    };
+
+    const rows = visible.map(a => {
+      const time = a.changed_at ? new Date(a.changed_at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }) : '';
+      return `<tr>
+        <td style="font-size:9px;white-space:nowrap">${App.esc(time)}</td>
+        <td><span style="${badgeStyle(a.action_type)};padding:1px 4px;border-radius:3px;font-size:9px;font-weight:600">${App.esc(a.action_type)}</span></td>
+        <td style="font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${App.esc(a.target)}">${App.esc(a.target)}</td>
+        <td style="color:var(--red);font-size:10px">${App.esc(a.old_value || '—')}</td>
+        <td style="color:var(--green);font-size:10px">${App.esc(a.new_value || '—')}</td>
+        <td style="font-size:10px">${App.esc(a.changed_by_name || a.changed_by || '')}</td>
+      </tr>`;
+    }).join('');
+
+    el.innerHTML = `<div style="max-width:1100px;margin:0 auto">
+      <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd);overflow-x:auto">
+        <table class="adm-tbl"><thead><tr><th>Time</th><th>Action</th><th>Target</th><th>From</th><th>To</th><th>By</th></tr></thead><tbody>${rows}</tbody></table>
+      </div>
+      ${hasMore ? `<div class="load-more" onclick="Scr3.showMoreAU()">แสดง ${_auShowCount} จาก ${filtered.length} · โหลดเพิ่ม 15 ↓</div>` : ''}
+    </div>`;
+  }
+
+  function setAUDate(which, val) { if (which === 'from') _auDateFrom = val; else _auDateTo = val; _auShowCount = 15; App.loadAuditData(_auDateFrom, _auDateTo); }
+  function setAUPreset(p) {
+    if (p === '30d') { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _auDateFrom = App.fmtDate(d); _auDateTo = App.todaySydney(); }
+    else { _auDateFrom = ''; _auDateTo = ''; }
+    _auShowCount = 15;
+    App.loadAuditData(_auDateFrom, _auDateTo);
+  }
+  function setAUFilter(f) { _auFilter = f; _auShowCount = 15; fillAudit(); }
+  function showMoreAU() { _auShowCount += 15; fillAudit(); }
 
   return {
     renderConfig, fillConfig, editConfig, saveConfig,
@@ -575,7 +738,7 @@ const Scr3 = (() => {
     renderAccess, fillAccess, setAccessData, togglePerm,
     renderWasteDashboard, fillWasteDashboard, setWDDate, setWDPreset,
     renderTopProducts, fillTopProducts, setTPDate, setTPPreset,
-    renderCutoff, fillCutoff,
-    renderAudit, fillAudit,
+    renderCutoff, fillCutoff, setCODate, setCOPreset, showMoreCO,
+    renderAudit, fillAudit, setAUDate, setAUPreset, setAUFilter, showMoreAU,
   };
 })();
