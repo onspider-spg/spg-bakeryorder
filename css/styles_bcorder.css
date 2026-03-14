@@ -1,6 +1,6 @@
-/* Version 1.7 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.8 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Phase 8: Visibility Matrix + Access Matrix tables */
+/* Phase 9: Reports dashboard (rpt-kpi, rpt-bar, rpt-grid) */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -703,6 +703,21 @@ html, body {
 .acc-cell:hover { background: var(--acc2); }
 .acc-toggle { width: 24px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; background: var(--bg3); color: var(--t4); cursor: pointer; }
 .acc-toggle.acc-on { background: var(--green-bg); color: var(--green); }
+
+/* ═══ REPORT DASHBOARDS (Phase 9) ═══ */
+.rpt-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px; }
+.rpt-kpi { padding: 10px; background: var(--bg); border-radius: var(--rd); }
+.rpt-kpi-val { font-size: 18px; font-weight: 800; }
+.rpt-kpi-label { font-size: 9px; color: var(--t3); font-weight: 600; }
+.rpt-bar { height: 10px; border-radius: 4px; background: var(--bd2); overflow: hidden; }
+.rpt-bar-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+.rpt-section { margin-bottom: 14px; }
+.rpt-section-title { font-size: 10px; font-weight: 700; color: var(--t3); text-transform: uppercase; margin-bottom: 6px; }
+.rpt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 768px) {
+  .rpt-kpis { grid-template-columns: repeat(2, 1fr); }
+  .rpt-grid { grid-template-columns: 1fr; }
+}
 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 768px) {

@@ -1,9 +1,9 @@
 /**
- * Version 1.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
- * Phase 8: Visibility Matrix + User Access Matrix
+ * Phase 9: Waste Dashboard + Top Products
  * ═══════════════════════════════════════════
  */
 
@@ -429,10 +429,140 @@ const Scr3 = (() => {
   // PLACEHOLDERS (Phase 9-10)
   // ═══════════════════════════════════════════
 
-  function renderWasteDashboard() { return placeholder('Waste Dashboard', '📊'); }
-  function fillWasteDashboard()   {}
-  function renderTopProducts()    { return placeholder('Top Products', '🏆'); }
-  function fillTopProducts()      {}
+  // ═══════════════════════════════════════════
+  // WASTE DASHBOARD (Phase 9)
+  // ═══════════════════════════════════════════
+
+  let _wdDateFrom = '';
+  let _wdDateTo = '';
+
+  function renderWasteDashboard() {
+    const d30 = new Date(App.sydneyNow()); d30.setDate(d30.getDate() - 30);
+    _wdDateFrom = App.fmtDate(d30);
+    _wdDateTo = App.todaySydney();
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Waste Dashboard</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅</span>
+        <input type="date" class="date-inp" value="${_wdDateFrom}" onchange="Scr3.setWDDate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_wdDateTo}" onchange="Scr3.setWDDate('to',this.value)">
+        <span class="date-link" onclick="Scr3.setWDPreset('30d')">30d</span>
+        <span class="date-link" onclick="Scr3.setWDPreset('all')">ทั้งหมด</span>
+      </div>
+      <div class="content" id="wdContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillWasteDashboard() {
+    const el = document.getElementById('wdContent');
+    if (!el) return;
+    const d = App.S.wasteDash;
+    if (!d) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">กำลังโหลด...</div></div>'; return; }
+
+    // KPI cards
+    const kpis = `<div class="rpt-kpis">
+      ${rptKpi(d.today, 'Today', 'var(--red)')}
+      ${rptKpi(d.week7, '7 days', 'var(--orange)')}
+      ${rptKpi(d.total, 'Total', 'var(--blue)')}
+      ${rptKpi(d.avg_per_day, 'Avg/day', 'var(--acc)')}
+    </div>`;
+
+    // By Reason
+    const maxReason = Math.max(...(d.by_reason || []).map(r => r.qty), 1);
+    const reasons = (d.by_reason || []).map(r =>
+      `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span style="font-weight:600">${App.esc(r.reason)}</span><span>${r.qty} pcs</span></div>${hBar(r.qty / maxReason * 100, reasonColor(r.reason))}</div>`
+    ).join('');
+    const reasonBlock = reasons ? `<div class="rpt-section"><div class="rpt-section-title">By Reason</div>${reasons}</div>` : '';
+
+    // Top Waste
+    const medals = ['🥇', '🥈', '🥉'];
+    const maxTop = Math.max(...(d.top_products || []).map(r => r.qty), 1);
+    const tops = (d.top_products || []).slice(0, 5).map((r, i) =>
+      `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${medals[i] || '#' + (i + 1)} <b>${App.esc(r.product_name)}</b></span><span style="color:var(--red)">${r.qty}</span></div>${hBar(r.qty / maxTop * 100, 'var(--red)')}</div>`
+    ).join('');
+    const topBlock = tops ? `<div class="rpt-section"><div class="rpt-section-title">🏆 Top Waste</div>${tops}</div>` : '';
+
+    el.innerHTML = `<div style="max-width:900px;margin:0 auto">${kpis}
+      <div class="rpt-grid">${reasonBlock}${topBlock}</div>
+    </div>`;
+  }
+
+  function setWDDate(which, val) { if (which === 'from') _wdDateFrom = val; else _wdDateTo = val; App.loadWasteDashboard(_wdDateFrom, _wdDateTo); }
+  function setWDPreset(p) {
+    if (p === '30d') { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _wdDateFrom = App.fmtDate(d); _wdDateTo = App.todaySydney(); }
+    else { _wdDateFrom = ''; _wdDateTo = ''; }
+    App.loadWasteDashboard(_wdDateFrom, _wdDateTo);
+  }
+
+  function reasonColor(r) { return r === 'Expired' ? '#ef4444' : r === 'Damaged' ? '#f97316' : r === 'Production Error' ? 'var(--acc)' : 'var(--blue)'; }
+
+  // ═══════════════════════════════════════════
+  // TOP PRODUCTS (Phase 9)
+  // ═══════════════════════════════════════════
+
+  let _tpDateFrom = '';
+  let _tpDateTo = '';
+
+  function renderTopProducts() {
+    const d30 = new Date(App.sydneyNow()); d30.setDate(d30.getDate() - 30);
+    _tpDateFrom = App.fmtDate(d30);
+    _tpDateTo = App.todaySydney();
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Top Products</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅</span>
+        <input type="date" class="date-inp" value="${_tpDateFrom}" onchange="Scr3.setTPDate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_tpDateTo}" onchange="Scr3.setTPDate('to',this.value)">
+        <span class="date-link" onclick="Scr3.setTPPreset('30d')">30d</span>
+        <span class="date-link" onclick="Scr3.setTPPreset('all')">ทั้งหมด</span>
+      </div>
+      <div class="content" id="tpContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillTopProducts() {
+    const el = document.getElementById('tpContent');
+    if (!el) return;
+    const d = App.S.topProds;
+    if (!d) { el.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><div class="empty-title">กำลังโหลด...</div></div>'; return; }
+
+    // Most Ordered
+    const medals = ['🥇', '🥈', '🥉'];
+    const topColors = ['var(--acc)', 'var(--acc)', 'var(--acc)', 'var(--blue)', 'var(--blue)'];
+    const maxOrd = Math.max(...(d.top_ordered || []).map(r => r.qty), 1);
+    const orderedBars = (d.top_ordered || []).slice(0, 5).map((r, i) =>
+      `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${medals[i] || '#' + (i + 1)} <b>${App.esc(r.product_name)}</b></span><span style="font-weight:700">${r.qty}</span></div>${hBar(r.qty / maxOrd * 100, topColors[i] || 'var(--blue)')}</div>`
+    ).join('');
+    const orderedBlock = orderedBars ? `<div class="rpt-section"><div class="rpt-section-title">🏆 Most Ordered</div>${orderedBars}</div>` : '';
+
+    // By Store
+    const storeColors = ['var(--green)', 'var(--blue)', 'var(--orange)', 'var(--acc)', 'var(--red)'];
+    const maxStore = Math.max(...(d.by_store || []).map(r => r.qty), 1);
+    const storeBars = (d.by_store || []).map((r, i) =>
+      `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span style="font-weight:600">${App.esc(App.getStoreName(r.store_id) || r.store_id)}</span><span>${r.qty}</span></div>${hBar(r.qty / maxStore * 100, storeColors[i % storeColors.length])}</div>`
+    ).join('');
+    const storeBlock = storeBars ? `<div class="rpt-section"><div class="rpt-section-title">🏪 By Store</div>${storeBars}</div>` : '';
+
+    if (!orderedBars && !storeBars) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div class="empty-title">ไม่มีข้อมูลในช่วงนี้</div></div>';
+      return;
+    }
+
+    el.innerHTML = `<div style="max-width:800px;margin:0 auto">${orderedBlock}${storeBlock}</div>`;
+  }
+
+  function setTPDate(which, val) { if (which === 'from') _tpDateFrom = val; else _tpDateTo = val; App.loadTopProducts(_tpDateFrom, _tpDateTo); }
+  function setTPPreset(p) {
+    if (p === '30d') { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _tpDateFrom = App.fmtDate(d); _tpDateTo = App.todaySydney(); }
+    else { _tpDateFrom = ''; _tpDateTo = ''; }
+    App.loadTopProducts(_tpDateFrom, _tpDateTo);
+  }
+
+  // ─── SHARED: horizontal bar + KPI card ───
+  function hBar(pct, color) {
+    return `<div class="rpt-bar"><div class="rpt-bar-fill" style="width:${Math.min(pct, 100)}%;background:${color}"></div></div>`;
+  }
+  function rptKpi(val, label, color) {
+    return `<div class="rpt-kpi" style="border-left:3px solid ${color}"><div class="rpt-kpi-val" style="color:${color}">${val ?? 0}</div><div class="rpt-kpi-label">${label}</div></div>`;
+  }
   function renderCutoff()         { return placeholder('Cutoff Violations', '⏰'); }
   function fillCutoff()           {}
   function renderAudit()          { return placeholder('Audit Trail', '📋'); }
@@ -443,8 +573,8 @@ const Scr3 = (() => {
     renderDeptMapping, fillDeptMapping, editDeptMapping, saveDeptMapping,
     renderVisibility, fillVisibility, setVisSection, filterVis, toggleVis,
     renderAccess, fillAccess, setAccessData, togglePerm,
-    renderWasteDashboard, fillWasteDashboard,
-    renderTopProducts, fillTopProducts,
+    renderWasteDashboard, fillWasteDashboard, setWDDate, setWDPreset,
+    renderTopProducts, fillTopProducts, setTPDate, setTPPreset,
     renderCutoff, fillCutoff,
     renderAudit, fillAudit,
   };

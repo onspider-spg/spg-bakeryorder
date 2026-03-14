@@ -1,9 +1,9 @@
 /**
- * Version 2.0 | 14 MAR 2026 | Siam Palette Group
+ * Version 2.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Phase 8: Access Matrix + Visibility loaders
+ * Phase 9: Waste Dashboard + Top Products loaders
  * ═══════════════════════════════════════════
  */
 
@@ -424,13 +424,25 @@ const App = (() => {
     Scr3.fillAccess();
   }
 
-  async function loadWasteDashboard() {
-    // Placeholder — Phase 9
+  async function loadWasteDashboard(dateFrom, dateTo) {
+    const params = {};
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    try {
+      const resp = await API.getWasteDashboard(params);
+      if (resp.success) { S.wasteDash = resp.data; }
+    } catch (e) { toast('Network error', 'error'); }
     Scr3.fillWasteDashboard();
   }
 
-  async function loadTopProducts() {
-    // Placeholder — Phase 9
+  async function loadTopProducts(dateFrom, dateTo) {
+    const params = {};
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    try {
+      const resp = await API.getTopProducts(params);
+      if (resp.success) { S.topProds = resp.data; }
+    } catch (e) { toast('Network error', 'error'); }
     Scr3.fillTopProducts();
   }
 
@@ -592,7 +604,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.0 | 14 Mar 2026</div>
+      <div class="sd-version">v2.1 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -671,7 +683,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.0</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.1</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
