@@ -1,9 +1,9 @@
 /**
- * Version 1.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.3 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Phase 2: accept_order + reject_order endpoints
+ * Phase 3: update_fulfilment + mark_delivered
  * ═══════════════════════════════════════════
  */
 
@@ -80,6 +80,8 @@ const API = (() => {
     cancelOrder:    (b)         => post('cancel_order', b),
     acceptOrder:    (b)         => post('accept_order', b),
     rejectOrder:    (b)         => post('reject_order', b),
+    updateFulfilment: (b)      => post('update_fulfilment', b),
+    markDelivered:  (b)         => post('mark_delivered', b),
     createWaste:    (b)         => post('create_waste', b),
     editWaste:      (b)         => post('edit_waste', b),
     deleteWaste:    (b)         => post('delete_waste', b),
