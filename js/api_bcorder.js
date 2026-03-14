@@ -1,9 +1,9 @@
 /**
- * Version 1.7.1 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.7.2 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Fix: Remove notification, add uploadImage
+ * Fix: Add cache-buster _t param to GET requests
  * ═══════════════════════════════════════════
  */
 
@@ -27,7 +27,7 @@ const API = (() => {
 
   // ─── Core fetch (GET with query params) ───
   async function get(action, params = {}) {
-    const qs = new URLSearchParams({ action, token: getToken(), ...params });
+    const qs = new URLSearchParams({ action, token: getToken(), _t: String(Date.now()), ...params });
     const resp = await fetch(BASE + '?' + qs, { method: 'GET' });
     const json = await resp.json();
     if (!json.success && json.error === 'INVALID_SESSION') {
