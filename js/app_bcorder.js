@@ -1,9 +1,9 @@
 /**
- * Version 1.7.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.7.3 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Phase 3: Fulfilment route + loadFulfilOrder
+ * Phase 4: Print Centre route + loadPrintCentre
  * ═══════════════════════════════════════════
  */
 
@@ -19,7 +19,7 @@ const App = (() => {
     stock: [],       _stockLoaded: false, _stockLoading: false,
     wasteLog: [],    _wasteLoaded: false, _wasteLoading: false,
     returns: [],     _retsLoaded: false,  _retsLoading: false,
-    notifications: [], dashboard: {},
+    notifications: [], dashboard: {}, printData: null,
     // Quotas
     quotas: {},       _quotasDay: -1,
     quotaMap: {},     // full 7-day map for quota screen
@@ -54,7 +54,7 @@ const App = (() => {
     // BC-only routes (Phase 2+)
     'accept':        { render: (p) => Scr2.renderAccept(p), title: 'Accept Order', onLoad: (p) => loadAcceptOrder(p.id) },
     'fulfil':        { render: (p) => Scr2.renderFulfil(p), title: 'Fulfilment',   onLoad: (p) => loadFulfilOrder(p.id) },
-    'print':         { render: () => Scr2.renderPrint(),        title: 'Print Centre' },
+    'print':         { render: () => Scr2.renderPrint(),        title: 'Print Centre', onLoad: () => loadPrintCentre() },
     'bc-returns':    { render: () => Scr2.renderBCReturns(),    title: 'Incoming Returns' },
     'products':      { render: () => Scr2.renderProducts(),     title: 'Manage Products' },
     'prod-edit':     { render: (p) => Scr2.renderProdEdit(p),   title: 'Edit Product' },
@@ -289,6 +289,19 @@ const App = (() => {
     }
   }
 
+  async function loadPrintCentre(date) {
+    const d = date || todaySydney();
+    try {
+      const resp = await API.getProductionSheet({ delivery_date: d });
+      if (resp.success) {
+        S.printData = resp.data;
+        Scr2.fillPrint();
+      }
+    } catch (e) {
+      toast('Network error', 'error');
+    }
+  }
+
   async function loadQuotaScreen() {
     await ensureProducts();
     // Full 7-day quota map
@@ -457,7 +470,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.7.2 | 14 Mar 2026</div>
+      <div class="sd-version">v1.7.3 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -518,7 +531,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.7.2/div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.7.3/div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -626,7 +639,7 @@ const App = (() => {
     openSidebar, closeSidebar, toggleSidebar,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,
-    loadBCDashboard, getStoreName, getDeptName,
+    loadBCDashboard, loadPrintCentre, getStoreName, getDeptName,
     sydneyNow, fmtDate, todaySydney, tomorrowSydney, fmtDateThai, fmtDateAU,
   };
 })();

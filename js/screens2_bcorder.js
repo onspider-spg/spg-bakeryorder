@@ -1,9 +1,9 @@
 /**
- * Version 1.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.3 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Phase 3: BC Dashboard + Accept + Fulfilment
+ * Phase 4: Print Centre (Production Sheet + Delivery Slip)
  * ═══════════════════════════════════════════
  */
 
@@ -362,12 +362,153 @@ const Scr2 = (() => {
     }
   }
 
-  // ═══ PLACEHOLDER SCREENS (Phase 4+) ═══
+  // ═══ PRINT CENTRE ═══
+  let _printTab = 'sheet'; // 'sheet' | 'slip'
+  let _printSection = 'all';
+  let _printDate = '';
+  let _slipStore = '';
+
+  function renderPrint() {
+    _printTab = 'sheet';
+    _printSection = 'all';
+    _printDate = App.todaySydney();
+    _slipStore = '';
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">\u2190</button><div class="toolbar-title">Print Centre</div></div>
+      <div class="content" id="printContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillPrint() {
+    const el = document.getElementById('printContent');
+    if (!el) return;
+    const d = App.S.printData;
+    if (!d) { el.innerHTML = '<div class="empty"><div class="empty-icon">\uD83D\uDDA8\uFE0F</div><div class="empty-title">\u0E01\u0E33\u0E25\u0E31\u0E07\u0E42\u0E2B\u0E25\u0E14...</div></div>'; return; }
+
+    // Tab chips
+    const tabs = `<div style="display:flex;gap:5px;margin-bottom:8px">
+      <div class="chip${_printTab === 'sheet' ? ' active' : ''}" onclick="Scr2.setPrintTab('sheet')">\uD83D\uDCC4 Production Sheet</div>
+      <div class="chip${_printTab === 'slip' ? ' active' : ''}" onclick="Scr2.setPrintTab('slip')">\uD83E\uDDFE Delivery Slip</div>
+    </div>`;
+
+    // Date picker
+    const datePicker = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font-size:12px;font-weight:600">\uD83D\uDCC5 Delivery:</span>
+      <input class="inp" type="date" value="${_printDate}" style="width:auto;font-size:12px;padding:6px 10px" onchange="Scr2.setPrintDate(this.value)">
+    </div>`;
+
+    // Section chips
+    const secs = new Set();
+    (d.products || []).forEach(p => { if (p.section_id) secs.add(p.section_id); });
+    const sorted = [...secs].sort();
+    const secChips = `<div style="display:flex;gap:5px;margin-bottom:10px">
+      <div class="chip${_printSection === 'all' ? ' active' : ''}" onclick="Scr2.setPrintSection('all')">All</div>
+      ${sorted.map(s => `<div class="chip${_printSection === s ? ' active' : ''}" onclick="Scr2.setPrintSection('${s}')">${App.esc(s)}</div>`).join('')}
+    </div>`;
+
+    if (_printTab === 'sheet') {
+      el.innerHTML = `<div style="max-width:900px;margin:0 auto">${tabs}${datePicker}${secChips}${renderProductionSheet(d)}</div>`;
+    } else {
+      if (!_slipStore && d.stores?.length) _slipStore = d.stores[0];
+      const storeSelect = `<div style="margin-bottom:12px"><select class="sel" style="max-width:300px" onchange="Scr2.setSlipStore(this.value)">
+        ${(d.stores || []).map(s => `<option value="${s}"${s === _slipStore ? ' selected' : ''}>${App.esc(App.getStoreName(s))} (${s})</option>`).join('')}
+      </select></div>`;
+      el.innerHTML = `<div style="max-width:900px;margin:0 auto">${tabs}${datePicker}${secChips}${storeSelect}${renderDeliverySlip(d)}</div>`;
+    }
+  }
+
+  function renderProductionSheet(d) {
+    let prods = d.products || [];
+    if (_printSection !== 'all') prods = prods.filter(p => p.section_id === _printSection);
+    if (!prods.length) return '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E21\u0E35\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23</div></div>';
+
+    const stores = d.stores || [];
+    const orderIds = (d.orders || []).map(o => o.order_id);
+
+    // Header
+    let html = `<div style="text-align:center;margin-bottom:8px">
+      <div style="font-size:14px;font-weight:700">PRODUCTION SHEET \u2014 ${_printSection === 'all' ? 'ALL' : _printSection.toUpperCase()}</div>
+      <div style="font-size:11px;color:var(--t3)">Delivery: ${App.fmtDateThai(_printDate)} | Orders: ${orderIds.length > 3 ? orderIds.slice(0, 3).join(', ') + '...' : orderIds.join(', ')}</div>
+    </div>`;
+
+    // Table
+    html += `<div style="overflow-x:auto"><table class="ptbl"><thead><tr>
+      <th style="text-align:left">Product</th><th>Total</th>
+      ${stores.map(s => `<th>${App.esc(s)}</th>`).join('')}
+    </tr></thead><tbody>`;
+
+    prods.forEach(p => {
+      const isUrg = p.urgent;
+      html += `<tr${isUrg ? ' style="background:#fff3cd"' : ''}>
+        <td style="text-align:left"><b>${App.esc(p.product_name)}</b></td>
+        <td><b>${p.total}</b></td>
+        ${stores.map(s => {
+          const sv = p.stores[s];
+          if (!sv) return '<td>\u2014</td>';
+          return `<td>${sv.qty}${sv.urgent ? '*' : ''}</td>`;
+        }).join('')}
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    html += '<div style="font-size:10px;color:var(--t3);margin-top:4px">* = URGENT \u26A1 | Sorted A-Z by product name</div>';
+    html += `<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" style="padding:10px 24px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print Production Sheet</button></div>`;
+
+    return html;
+  }
+
+  function renderDeliverySlip(d) {
+    if (!_slipStore) return '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E23\u0E49\u0E32\u0E19</div></div>';
+
+    let prods = (d.products || []).filter(p => p.stores[_slipStore]);
+    if (_printSection !== 'all') prods = prods.filter(p => p.section_id === _printSection);
+    if (!prods.length) return '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E21\u0E35\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E23\u0E49\u0E32\u0E19\u0E19\u0E35\u0E49</div></div>';
+
+    // Group by section
+    const sections = {};
+    prods.forEach(p => {
+      const sec = p.section_id || 'other';
+      if (!sections[sec]) sections[sec] = [];
+      sections[sec].push(p);
+    });
+
+    // Collect order IDs for this store
+    const storeOrders = (d.orders || []).filter(o => o.store_id === _slipStore);
+    const orderStr = storeOrders.map(o => o.order_id).join(', ');
+    const displayName = storeOrders[0]?.display_name || '';
+
+    let slip = `<div style="border:1px solid #ccc;padding:12px;font-size:11px;max-width:300px;margin:8px auto;font-family:monospace;line-height:1.5">`;
+    slip += `<div style="text-align:center;border-bottom:1px dashed #ccc;padding-bottom:6px;margin-bottom:6px">
+      <div style="font-size:14px;font-weight:700">${App.esc(App.getStoreName(_slipStore))}</div>
+      <div>Delivery: ${App.fmtDateThai(_printDate)}</div>
+      <div style="font-size:10px;color:#aaa">Orders: ${App.esc(orderStr)}</div>
+    </div>`;
+
+    for (const sec of Object.keys(sections).sort()) {
+      slip += `<div style="font-weight:700;margin:6px 0 2px;border-top:1px solid #eee;padding-top:4px">\u2550\u2550\u2550 ${App.esc(sec.toUpperCase())} \u2550\u2550\u2550</div>`;
+      if (displayName) slip += `<div style="font-size:10px;color:#888">--- ${App.esc(displayName)} ---</div>`;
+      sections[sec].forEach(p => {
+        const sv = p.stores[_slipStore];
+        const star = sv?.urgent ? '\u2B50 ' : '';
+        slip += `<div style="display:flex;justify-content:space-between;padding:1px 0"><span>${star}<b>${App.esc(p.product_name)}</b></span><span>${sv.qty} \u2192 ___</span></div>`;
+      });
+    }
+
+    slip += `<div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:6px;font-size:10px">Packed by: ____________<br>Checked by: ___________</div>`;
+    slip += '</div>';
+
+    slip += `<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" style="padding:10px 24px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print Delivery Slip</button></div>`;
+    return slip;
+  }
+
+  function setPrintTab(tab) { _printTab = tab; fillPrint(); }
+  function setPrintSection(sec) { _printSection = sec; fillPrint(); }
+  function setSlipStore(sid) { _slipStore = sid; fillPrint(); }
+  function setPrintDate(val) { _printDate = val; App.loadPrintCentre(val); }
+
+  // ═══ PLACEHOLDER SCREENS (Phase 5+) ═══
   function renderPlaceholder(title) {
     return `<div class="content"><div class="empty"><div class="empty-icon">\uD83D\uDEA7</div><div class="empty-title">${App.esc(title)}</div><div class="empty-desc">Coming in next update</div></div></div>`;
   }
 
-  function renderPrint()     { return renderPlaceholder('Print Centre'); }
   function renderBCReturns() { return renderPlaceholder('Incoming Returns'); }
   function renderProducts()  { return renderPlaceholder('Manage Products'); }
   function renderProdEdit()  { return renderPlaceholder('Edit Product'); }
@@ -377,6 +518,7 @@ const Scr2 = (() => {
     renderAccept, fillAccept, doAccept, showRejectDialog, doReject,
     renderFulfil, fillFulfil, fulfilFull, fulfilPartial, setFulfilQty, setFulfilNote,
     saveFulfilment, doMarkDelivered,
-    renderPrint, renderBCReturns, renderProducts, renderProdEdit,
+    renderPrint, fillPrint, setPrintTab, setPrintSection, setSlipStore, setPrintDate,
+    renderBCReturns, renderProducts, renderProdEdit,
   };
 })();

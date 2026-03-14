@@ -1,6 +1,6 @@
-/* Version 1.5.4 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.5.5 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Add: BC Dashboard (KPI, progress, alert) */
+/* Add: Print Centre (ptbl, slip) */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -636,6 +636,16 @@ html, body {
 /* Desktop/Mobile toggle */
 .q-desk-only { display: block; }
 .q-mob-only { display: none; }
+
+/* ═══ PRINT CENTRE ═══ */
+.ptbl { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+.ptbl th, .ptbl td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; }
+.ptbl th { background: #f0f0f0; font-weight: 600; font-size: 10px; }
+@media print {
+  .topbar, .sidebar, .sidebar-overlay, .sidebar-panel, .toolbar, .hamburger, .chip, .btn, .toast-wrap, #dialog-root { display: none !important; }
+  .shell-main { overflow: visible !important; }
+  .content { overflow: visible !important; padding: 0 !important; }
+}
 
 /* ═══ BC DASHBOARD ═══ */
 .bc-kpis { display: flex; gap: 5px; margin-bottom: 10px; flex-wrap: wrap; }
