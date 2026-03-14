@@ -1,6 +1,6 @@
-/* Version 1.9 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.9.1 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Phase 10: Admin table (.adm-tbl) — ALL PHASES COMPLETE */
+/* Fix: Topbar logo style for full module name */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -40,8 +40,8 @@ html, body {
   border-bottom: 1px solid var(--bd2); gap: var(--sp-sm);
   background: var(--bg); flex-shrink: 0; min-height: 44px; z-index: 50;
 }
-.topbar-logo { font-size: var(--fs-body); font-weight: 800; color: var(--acc); letter-spacing: -.5px; cursor: pointer; }
-.topbar-title { font-size: 13px; font-weight: 600; color: var(--t2); }
+.topbar-logo { font-size: 13px; font-weight: 800; color: var(--acc); letter-spacing: -.3px; cursor: pointer; white-space: nowrap; }
+.topbar-title { font-size: 13px; font-weight: 600; color: var(--t2); min-width: 0; }
 .topbar-title .screen-name { color: var(--acc); font-weight: 700; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-sm); }
 .topbar-icon {

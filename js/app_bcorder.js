@@ -1,9 +1,9 @@
 /**
- * Version 2.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 2.2.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Phase 10: Cutoff + Audit loaders (ALL PHASES COMPLETE)
+ * Fix: Topbar logo full name + Profile popup redesign
  * ═══════════════════════════════════════════
  */
 
@@ -113,15 +113,15 @@ const App = (() => {
   // ─── SHELL (mount once) ───
   function mountShell() {
     const s = S.session || {};
-    const init = (s.display_name || '?').charAt(0).toUpperCase();
+    const initials = getInitials(s.display_name);
     appEl().innerHTML = `<div class="shell">
       <div class="topbar">
         <div class="hamburger" onclick="App.openSidebar()">☰</div>
-        <div class="topbar-logo" onclick="location.href='${API.HOME_URL}'">SPG</div>
-        <div class="topbar-title">Bakery Order <span class="screen-name" id="tbTitle"></span></div>
+        <div class="topbar-logo" onclick="App.go('home')">SPG Bakery Center Order</div>
+        <div class="topbar-title"><span class="screen-name" id="tbTitle"></span></div>
         <div class="topbar-right">
           <div class="topbar-icon" onclick="App.refreshCurrent()" title="Refresh">↻</div>
-          <div class="topbar-avatar" onclick="App.showProfilePopup()">${esc(init)}</div>
+          <div class="topbar-avatar" onclick="App.showProfilePopup()">${esc(initials)}</div>
         </div>
       </div>
       <div class="shell-body">
@@ -616,7 +616,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2 | 14 Mar 2026</div>
+      <div class="sd-version">v2.2.1 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -651,9 +651,9 @@ const App = (() => {
     const panel = document.getElementById('sidebar-panel');
     if (!panel) return;
     const s = S.session || {};
-    const init = (s.display_name || '?').charAt(0).toUpperCase();
+    const initials = getInitials(s.display_name);
     const isAdmin = S.sidebarRole === 'admin';
-    let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(init)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}</div></div></div>`;
+    let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(initials)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}</div></div></div>`;
     html += mobItem('home', '◇', 'Dashboard');
 
     if (S.role === 'store') {
@@ -695,7 +695,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.1</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -721,16 +721,20 @@ const App = (() => {
 
   function showProfilePopup() {
     const s = S.session; if (!s) return;
-    const init = (s.display_name || '?').charAt(0).toUpperCase();
-    showDialog(`<div class="popup-sheet" style="width:320px">
+    const initials = getInitials(s.display_name);
+    showDialog(`<div class="popup-sheet" style="width:340px">
       <div class="popup-header"><div class="popup-title">Profile</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div class="topbar-avatar" style="width:40px;height:40px;font-size:16px">${esc(init)}</div><div><div style="font-size:14px;font-weight:700">${esc(s.display_name)}</div><div style="font-size:11px;color:var(--t3)">${esc(s.full_name || '')}</div></div></div>
-      <div style="background:var(--bg3);border-radius:var(--rd);padding:12px;font-size:12px;margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t3)">Store</span><span style="font-weight:600">${esc(getStoreName(s.store_id))}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t3)">Dept</span><span style="font-weight:600">${esc(s.dept_id)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t3)">Tier</span><span style="font-weight:600">${esc(s.tier_id)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--t3)">Stock Points</span><span style="font-weight:600">${getStockPoints()}</span></div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div class="topbar-avatar" style="width:48px;height:48px;font-size:18px">${esc(initials)}</div>
+        <div><div style="font-size:16px;font-weight:700">${esc(s.display_name)}</div><div style="font-size:12px;color:var(--t3)">${esc(s.full_name || s.display_name)}</div></div>
       </div>
+      <div style="background:var(--bg3);border-radius:var(--rd);padding:14px;font-size:13px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Store</span><span style="font-weight:600">${esc(getStoreName(s.store_id))}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Dept</span><span style="font-weight:600">${esc(s.dept_id)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Tier</span><span style="font-weight:600">${esc(s.tier_id)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Stock Points</span><span style="font-weight:600">${getStockPoints()}</span></div>
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-bottom:10px" onclick="App.closeDialog();location.href='${API.HOME_URL}'">View Full Profile</button>
       <button class="btn btn-outline btn-full" style="color:var(--red);border-color:var(--red)" onclick="App.closeDialog();API.logout()">Log out</button>
     </div>`);
   }
@@ -738,6 +742,12 @@ const App = (() => {
   // ═══ HELPERS ═══
   function hasPerm(fnId) { const tl = parseInt((S.session?.tier_id || 'T9').replace('T', '')); return tl <= 2 || S.permissions.includes(fnId); }
   function esc(str) { if (str == null) return ''; const d = document.createElement('div'); d.textContent = String(str); return d.innerHTML; }
+  function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+  }
   function sydneyNow() { return new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Sydney' })); }
   function fmtDate(d) { if (typeof d === 'string') return d; return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function todaySydney() { return fmtDate(sydneyNow()); }
