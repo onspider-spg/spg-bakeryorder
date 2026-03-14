@@ -1,9 +1,9 @@
 /**
- * Version 1.3 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.3.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
- * Phase 10: Cutoff Violations + Audit Trail (ALL COMPLETE)
+ * Fix: User Access save button
  * ═══════════════════════════════════════════
  */
 
@@ -382,6 +382,10 @@ const Scr3 = (() => {
       <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd);overflow-x:auto">
         <table class="acc-tbl"><thead><tr><th style="min-width:180px;text-align:left">Function</th>${thTiers}</tr></thead><tbody>${rows}</tbody></table>
       </div>
+      <div style="display:flex;justify-content:center;margin:16px 0">
+        <button class="btn btn-primary" style="padding:10px 40px" onclick="App.toast('✅ Permission อัพเดทเรียบร้อย','success');App.go('home')">💾 Save & Done</button>
+      </div>
+      <div style="font-size:9px;color:var(--t4);text-align:center">ทุกการเปลี่ยนแปลงจะบันทึกทันทีที่กด</div>
     </div>`;
   }
 

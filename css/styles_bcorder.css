@@ -1,6 +1,6 @@
-/* Version 1.9.1 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.9.2 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Fix: Topbar logo style for full module name */
+/* Fix: section-card for Print Centre + Products UI */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -41,8 +41,6 @@ html, body {
   background: var(--bg); flex-shrink: 0; min-height: 44px; z-index: 50;
 }
 .topbar-logo { font-size: 13px; font-weight: 800; color: var(--acc); letter-spacing: -.3px; cursor: pointer; white-space: nowrap; }
-.topbar-title { font-size: 13px; font-weight: 600; color: var(--t2); min-width: 0; }
-.topbar-title .screen-name { color: var(--acc); font-weight: 700; }
 .topbar-right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-sm); }
 .topbar-icon {
   width: 28px; height: 28px; border-radius: 50%;
@@ -684,6 +682,12 @@ html, body {
 .adm-tbl th { padding: 7px 10px; text-align: left; font-weight: 600; font-size: 10px; color: var(--t1); border-bottom: 2px solid var(--bd); background: var(--bg); text-transform: uppercase; }
 .adm-tbl td { padding: 6px 10px; border-bottom: 1px solid var(--bd2); }
 .adm-tbl tbody tr:hover { background: var(--bg3); }
+
+/* Section card (shared wrapper for grouped UI sections) */
+.section-card {
+  background: var(--bg); border: 1px solid var(--bd);
+  border-radius: var(--rd-lg); padding: 14px 16px;
+}
 
 /* ═══ VISIBILITY MATRIX (Phase 8) ═══ */
 .vis-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }

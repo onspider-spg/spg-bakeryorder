@@ -1,9 +1,9 @@
 /**
- * Version 1.5 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Phase 6: Manage Products + Edit + Visibility
+ * Fix: Print Centre + Products UI sections
  * ═══════════════════════════════════════════
  */
 
@@ -399,20 +399,26 @@ const Scr2 = (() => {
     const secs = new Set();
     (d.products || []).forEach(p => { if (p.section_id) secs.add(p.section_id); });
     const sorted = [...secs].sort();
-    const secChips = `<div style="display:flex;gap:5px;margin-bottom:10px">
+    const secChips = `<div style="display:flex;gap:5px;flex-wrap:wrap">
       <div class="chip${_printSection === 'all' ? ' active' : ''}" onclick="Scr2.setPrintSection('all')">All</div>
       ${sorted.map(s => `<div class="chip${_printSection === s ? ' active' : ''}" onclick="Scr2.setPrintSection('${s}')">${App.esc(s)}</div>`).join('')}
     </div>`;
 
-    if (_printTab === 'sheet') {
-      el.innerHTML = `<div style="max-width:900px;margin:0 auto">${tabs}${datePicker}${secChips}${renderProductionSheet(d)}</div>`;
-    } else {
+    // Controls card (white background section)
+    let controlsCard = `<div class="section-card" style="margin-bottom:10px">${tabs}${datePicker}${secChips}`;
+    if (_printTab === 'slip') {
       if (!_slipStore && d.stores?.length) _slipStore = d.stores[0];
-      const storeSelect = `<div style="margin-bottom:12px"><select class="sel" style="max-width:300px" onchange="Scr2.setSlipStore(this.value)">
+      controlsCard += `<div style="margin-top:8px"><select class="sel" style="max-width:300px" onchange="Scr2.setSlipStore(this.value)">
         ${(d.stores || []).map(s => `<option value="${s}"${s === _slipStore ? ' selected' : ''}>${App.esc(App.getStoreName(s))} (${s})</option>`).join('')}
       </select></div>`;
-      el.innerHTML = `<div style="max-width:900px;margin:0 auto">${tabs}${datePicker}${secChips}${storeSelect}${renderDeliverySlip(d)}</div>`;
     }
+    controlsCard += '</div>';
+
+    // Print area card (white background section)
+    const printArea = _printTab === 'sheet' ? renderProductionSheet(d) : renderDeliverySlip(d);
+    const printCard = `<div class="section-card">${printArea}</div>`;
+
+    el.innerHTML = `<div style="max-width:900px;margin:0 auto">${controlsCard}${printCard}</div>`;
   }
 
   function renderProductionSheet(d) {
@@ -795,7 +801,7 @@ const Scr2 = (() => {
       }).join('') + '</div>';
     }
 
-    el.innerHTML = tabs + search + secChips + sortNote + cards;
+    el.innerHTML = `<div class="section-card" style="margin-bottom:10px">${tabs}${search}${secChips}${sortNote}</div><div class="section-card">${cards}</div>`;
   }
 
   function setProdTab(tab) { _prodTab = tab; _prodSectionFilter = 'all'; fillProducts(); }

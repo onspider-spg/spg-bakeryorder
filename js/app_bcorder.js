@@ -95,10 +95,6 @@ const App = (() => {
       appEl().innerHTML = def.render(params);
     }
 
-    // Update topbar title
-    const titleEl = document.getElementById('tbTitle');
-    if (titleEl) titleEl.textContent = def.title;
-
     if (def.onLoad) setTimeout(() => def.onLoad(params), 20);
     window.scrollTo(0, 0);
     const ct = appEl().querySelector('.content');
@@ -118,7 +114,6 @@ const App = (() => {
       <div class="topbar">
         <div class="hamburger" onclick="App.openSidebar()">☰</div>
         <div class="topbar-logo" onclick="App.go('home')">SPG Bakery Center Order</div>
-        <div class="topbar-title"><span class="screen-name" id="tbTitle"></span></div>
         <div class="topbar-right">
           <div class="topbar-icon" onclick="App.refreshCurrent()" title="Refresh">↻</div>
           <div class="topbar-avatar" onclick="App.showProfilePopup()">${esc(initials)}</div>
