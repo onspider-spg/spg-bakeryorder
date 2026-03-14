@@ -394,7 +394,7 @@ const Scr3 = (() => {
 
   // ─── Optimistic toggle permission ───
   async function togglePerm(functionId, tierId) {
-    if (!_accessData) return;
+    if (!_accessData) { App.toast('No access data loaded', 'error'); return; }
     const key = functionId + '|' + tierId;
     const wasOn = _accessData.permissions[key] === true;
     const newOn = !wasOn;
@@ -407,17 +407,19 @@ const Scr3 = (() => {
       if (inner) { inner.className = 'acc-toggle' + (newOn ? ' acc-on' : ''); inner.textContent = newOn ? '✅' : '—'; }
     }
 
-    // Sync DB
+    // Sync DB — with visible feedback
     try {
       const resp = await API.togglePermission({ function_id: functionId, tier_id: tierId, allowed: newOn });
-      if (!resp.success) {
+      if (resp.success) {
+        App.toast(functionId + ' × ' + tierId + ' → ' + (newOn ? 'ON' : 'OFF'), 'success');
+      } else {
         // Rollback
         _accessData.permissions[key] = wasOn;
         if (cell) {
           const inner = cell.querySelector('.acc-toggle');
           if (inner) { inner.className = 'acc-toggle' + (wasOn ? ' acc-on' : ''); inner.textContent = wasOn ? '✅' : '—'; }
         }
-        App.toast(resp.message || 'Error', 'error');
+        App.toast('FAIL: ' + (resp.error || '') + ' ' + (resp.message || ''), 'error');
       }
     } catch (e) {
       _accessData.permissions[key] = wasOn;
@@ -425,7 +427,7 @@ const Scr3 = (() => {
         const inner = cell.querySelector('.acc-toggle');
         if (inner) { inner.className = 'acc-toggle' + (wasOn ? ' acc-on' : ''); inner.textContent = wasOn ? '✅' : '—'; }
       }
-      App.toast('Network error', 'error');
+      App.toast('CATCH: ' + e.message, 'error');
     }
   }
 
