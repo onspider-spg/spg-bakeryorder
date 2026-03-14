@@ -1,5 +1,5 @@
 /**
- * Version 1.6.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6.3 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -272,7 +272,7 @@ const App = (() => {
       if (!p) return;
       S.cart.push({
         product_id: pid, product_name: p.product_name, unit: p.unit || '',
-        qty, is_urgent: false, note: '',
+        qty, is_urgent: false, note: '', _auto: false,
         stock_on_hand: null, section_id: p.section_id,
         min_order: p.min_order || 1, order_step: p.order_step || 1,
       });
@@ -350,7 +350,7 @@ const App = (() => {
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.6.2 | 14 Mar 2026</div>
+      <div class="sd-version">v1.6.3 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;

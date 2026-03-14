@@ -1,9 +1,9 @@
 /**
- * Version 1.5.4 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.5 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Fix: Single clear button + Auto-suggest + Hard refresh
+ * Fix: Auto-suggest recalculate + fillBrowse dedup
  * ═══════════════════════════════════════════
  */
 
@@ -207,6 +207,8 @@ const Scr = (() => {
     }
 
     App.setCartQty(pid, qty);
+    const sc = App.getCartItem(pid);
+    if (sc) sc._auto = false;
 
     // Read stock value from memory (not DOM) and save to cart
     if (qty > 0) {
@@ -266,11 +268,11 @@ const Scr = (() => {
     if (n1 || n2) autoSuggest(pid, sum);
   }
 
-  // ─── Auto-suggest: quota − stock → fill stepper (only if qty = 0) ───
+  // ─── Auto-suggest: quota − stock → fill stepper (recalc if auto, skip if user set) ───
   function autoSuggest(pid, stockVal) {
     if (stockVal == null || isNaN(stockVal)) return;
     const cart = App.getCartItem(pid);
-    if (cart && cart.qty > 0) return; // user already set qty — don't overwrite
+    if (cart && cart.qty > 0 && !cart._auto) return; // user กดเอง → ไม่แตะ
 
     const p = App.S.products.find(pr => pr.product_id === pid);
     if (!p) return;
@@ -282,7 +284,20 @@ const Scr = (() => {
     const maxOrd = p.max_order || 9999;
 
     let suggest = Math.max(quota - stockVal, 0);
-    if (suggest <= 0) return; // stock ≥ quota → no suggest
+    if (suggest <= 0) {
+      if (cart && cart._auto) {
+        App.setCartQty(pid, 0);
+        const qtyEl = document.getElementById('qty-' + pid);
+        if (qtyEl) { qtyEl.textContent = 0; qtyEl.className = 'stp-val'; }
+        const card = document.getElementById('pc-' + pid);
+        if (card) card.className = 'pcard';
+        card?.querySelectorAll('.stp-btn').forEach(b => b.className = 'stp-btn');
+        const urgEl = document.getElementById('urg-' + pid);
+        if (urgEl) urgEl.className = 'pcard-urg';
+        updateCartFooter();
+      }
+      return;
+    }
 
     // Round up to min_order
     if (suggest < minOrd) suggest = minOrd;
@@ -294,6 +309,8 @@ const Scr = (() => {
     // Auto-fill stepper
     App.setCartQty(pid, suggest);
     App.setCartStock(pid, stockVal);
+    const ac = App.getCartItem(pid);
+    if (ac) ac._auto = true;
 
     // Targeted DOM update
     const qtyEl = document.getElementById('qty-' + pid);
@@ -1257,7 +1274,6 @@ const Scr = (() => {
       btn.disabled = false; btn.textContent = '💾 บันทึก';
     }
   }
-  function fillBrowse() { /* called from App after data load */ filterProducts(); }
 
   return {
     renderLoading, renderNoToken, renderInvalidToken, renderBlocked,
