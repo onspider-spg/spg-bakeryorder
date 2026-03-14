@@ -1,9 +1,9 @@
 /**
- * Version 1.3.3 | 15 MAR 2026 | Siam Palette Group
+ * Version 1.3.4 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
- * Fix: User Access boolean comparison, debounced vis search, DRY date presets
+ * Fix: User Access boolean, DRY toggleVis/togglePerm, debounce vis search, DRY date presets
  * ═══════════════════════════════════════════
  */
 
@@ -308,34 +308,38 @@ const Scr3 = (() => {
     const wasOn = idx >= 0 && vis[idx].is_active !== false;
     const newOn = !wasOn;
 
-    // Optimistic UI
+    // UI helper
     const cellId = 'vc-' + productId + '-' + storeId + '-' + deptId;
     const cell = document.getElementById(cellId);
-    if (cell) cell.innerHTML = `<span style="color:${newOn ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${newOn ? '☑' : '☐'}</span>`;
-
-    // Update memory
-    if (newOn) {
-      if (idx >= 0) { vis[idx].is_active = true; }
-      else { vis.push({ store_id: storeId, dept_id: deptId, is_active: true }); }
-    } else {
-      if (idx >= 0) vis.splice(idx, 1);
+    function setUI(on) {
+      if (cell) cell.innerHTML = `<span style="color:${on ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${on ? '☑' : '☐'}</span>`;
     }
 
-    // Sync DB (fire-and-forget with rollback)
+    // Memory helper
+    function setMem(on) {
+      if (on) {
+        const i = vis.findIndex(v => v.store_id === storeId && v.dept_id === deptId);
+        if (i >= 0) { vis[i].is_active = true; }
+        else { vis.push({ store_id: storeId, dept_id: deptId, is_active: true }); }
+      } else {
+        const i = vis.findIndex(v => v.store_id === storeId && v.dept_id === deptId);
+        if (i >= 0) vis.splice(i, 1);
+      }
+    }
+
+    // Optimistic: update UI + memory
+    setUI(newOn);
+    setMem(newOn);
+
+    // Sync DB — rollback on fail
     try {
       const resp = await API.toggleVisibility({ product_id: productId, store_id: storeId, dept_id: deptId, visible: newOn });
       if (!resp.success) {
-        // Rollback
-        if (newOn) { const ri = vis.findIndex(v => v.store_id === storeId && v.dept_id === deptId); if (ri >= 0) vis.splice(ri, 1); }
-        else { vis.push({ store_id: storeId, dept_id: deptId, is_active: true }); }
-        if (cell) cell.innerHTML = `<span style="color:${wasOn ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${wasOn ? '☑' : '☐'}</span>`;
+        setMem(wasOn); setUI(wasOn);
         App.toast(resp.message || 'Error', 'error');
       }
     } catch (e) {
-      // Rollback on network error
-      if (newOn) { const ri = vis.findIndex(v => v.store_id === storeId && v.dept_id === deptId); if (ri >= 0) vis.splice(ri, 1); }
-      else { vis.push({ store_id: storeId, dept_id: deptId, is_active: true }); }
-      if (cell) cell.innerHTML = `<span style="color:${wasOn ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${wasOn ? '☑' : '☐'}</span>`;
+      setMem(wasOn); setUI(wasOn);
       App.toast('Network error', 'error');
     }
   }

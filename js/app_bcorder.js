@@ -1,9 +1,9 @@
 /**
- * Version 2.2.3 | 15 MAR 2026 | Siam Palette Group
+ * Version 2.2.4 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: Promise.all parallel loading, DRY loaders, esc() cache, debounce, stopSessionMonitor
+ * Fix: Promise.all parallel, DRY loaders, esc() cache, debounce, orders TTL 5min
  * ═══════════════════════════════════════════
  */
 
@@ -15,7 +15,7 @@ const App = (() => {
     stores: [], departments: [], orderingChannels: [],
     categories: [],  _catsLoaded: false,  _catsLoading: false,
     products: [],    _prodsLoaded: false, _prodsLoading: false,
-    orders: [],      _ordersLoaded: false, _ordersLoading: false,
+    orders: [],      _ordersLoaded: false, _ordersLoading: false, _ordersLoadedAt: 0,
     stock: [],       _stockLoaded: false, _stockLoading: false,
     wasteLog: [],    _wasteLoaded: false, _wasteLoading: false,
     returns: [],     _retsLoaded: false,  _retsLoading: false,
@@ -245,12 +245,14 @@ const App = (() => {
   }
 
   async function loadOrders(force) {
-    if (S._ordersLoaded && !force) { Scr.fillOrders(); return; }
+    // TTL: 5 minutes — auto-stale if user leaves tab open
+    const stale = S._ordersLoaded && (Date.now() - S._ordersLoadedAt > 5 * 60000);
+    if (S._ordersLoaded && !force && !stale) { Scr.fillOrders(); return; }
     if (S._ordersLoading) return;
     S._ordersLoading = true;
     try {
       const resp = await API.getOrders({ limit: '200' });
-      if (resp.success) { S.orders = resp.data; S._ordersLoaded = true; }
+      if (resp.success) { S.orders = resp.data; S._ordersLoaded = true; S._ordersLoadedAt = Date.now(); }
     } finally { S._ordersLoading = false; }
     Scr.fillOrders();
   }
@@ -575,7 +577,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2.3 | 15 Mar 2026</div>
+      <div class="sd-version">v2.2.4 | 15 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -654,7 +656,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.3</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.4</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
