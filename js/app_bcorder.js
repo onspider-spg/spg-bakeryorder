@@ -1,5 +1,5 @@
 /**
- * Version 1.6.3 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6.4 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -35,6 +35,7 @@ const App = (() => {
   let currentRoute = '';
   let currentParams = {};
   let _fromPopstate = false;
+  let _shellMounted = false;
 
   // ─── ROUTES ───
   const ROUTES = {
@@ -61,10 +62,12 @@ const App = (() => {
 
     const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns'];
     if (authScreens.includes(route) && S.session) {
-      appEl().innerHTML = renderShell(def.render(params));
-      buildSidebar();
-      setupFlyout();
+      if (!_shellMounted) mountShell();
+      const main = document.querySelector('.shell-main');
+      if (main) main.innerHTML = def.render(params);
+      updateSidebarActive();
     } else {
+      _shellMounted = false;
       appEl().innerHTML = def.render(params);
     }
 
@@ -83,11 +86,11 @@ const App = (() => {
     else { history.pushState({ route, params }, '', hash); }
   }
 
-  // ─── SHELL ───
-  function renderShell(mainContent) {
+  // ─── SHELL (mount once) ───
+  function mountShell() {
     const s = S.session || {};
     const init = (s.display_name || '?').charAt(0).toUpperCase();
-    return `<div class="shell">
+    appEl().innerHTML = `<div class="shell">
       <div class="topbar">
         <div class="hamburger" onclick="App.openSidebar()">☰</div>
         <div class="topbar-logo" onclick="location.href='${API.HOME_URL}'">SPG</div>
@@ -99,9 +102,18 @@ const App = (() => {
       </div>
       <div class="shell-body">
         <nav class="sidebar"></nav>
-        <div class="shell-main">${mainContent}</div>
+        <div class="shell-main"></div>
       </div>
     </div>`;
+    buildSidebar();
+    setupFlyout();
+    _shellMounted = true;
+  }
+
+  function updateSidebarActive() {
+    document.querySelectorAll('[data-route]').forEach(el => {
+      el.classList.toggle('active', el.dataset.route === currentRoute);
+    });
   }
 
   // ═══ DATA LOADERS ═══
@@ -338,7 +350,7 @@ const App = (() => {
       { r: 'quota',  lbl: 'Set Quota',   perm: 'fn_create_order' },
     ];
     html += sdGroup('orders', '⊞', 'Orders', orderItems.filter(i => !i.perm || hasPerm(i.perm)).map(
-      i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" onclick="${i.action || "App.go('" + i.r + "')"}">${i.lbl}</div>`
+      i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="${i.action || "App.go('" + i.r + "')"}">${i.lbl}</div>`
     ).join(''));
 
     const recordItems = [
@@ -346,11 +358,11 @@ const App = (() => {
       { r: 'returns', lbl: 'Returns',   perm: 'fn_view_returns' },
     ];
     html += sdGroup('records', '▤', 'Records', recordItems.filter(i => !i.perm || hasPerm(i.perm)).map(
-      i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" onclick="App.go('${i.r}')">${i.lbl}</div>`
+      i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.6.3 | 14 Mar 2026</div>
+      <div class="sd-version">v1.6.4 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -362,7 +374,7 @@ const App = (() => {
 
   function sdItem(route, icon, label) {
     const active = currentRoute === route ? ' active' : '';
-    return `<div class="sd-item${active}" onclick="App.go('${route}')"><span class="sd-item-icon">${icon}</span><span class="sd-item-text">${label}</span></div>`;
+    return `<div class="sd-item${active}" data-route="${route}" onclick="App.go('${route}')"><span class="sd-item-icon">${icon}</span><span class="sd-item-text">${label}</span></div>`;
   }
   function sdGroup(id, icon, label, items) {
     return `<div class="sd-group" data-group="${id}"><div class="sd-group-head"><span class="sd-item-icon">${icon}</span><span class="sd-item-text">${label}</span><span class="sd-group-arr">›</span></div><div class="sd-flyout">${items}</div></div>`;
@@ -389,7 +401,7 @@ const App = (() => {
     let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(init)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}</div></div></div>`;
     html += mobItem('home', '◇', 'Dashboard');
     html += '<div style="height:8px"></div><div class="mob-sidebar-section">Orders</div>';
-    if (hasPerm('fn_create_order')) html += `<div class="mob-sd-item" onclick="App.closeSidebar();App.goToBrowse()"><span class="sd-item-icon">⊞</span>Create Order</div>`;
+    if (hasPerm('fn_create_order')) html += `<div class="mob-sd-item" data-route="browse" onclick="App.closeSidebar();App.goToBrowse()"><span class="sd-item-icon">⊞</span>Create Order</div>`;
     if (hasPerm('fn_view_own_orders')) html += mobItem('orders', '⊞', 'View Orders');
     if (hasPerm('fn_create_order')) html += mobItem('quota', '⊞', 'Set Quota');
     html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
@@ -400,7 +412,7 @@ const App = (() => {
   }
   function mobItem(route, icon, label) {
     const active = currentRoute === route ? ' active' : '';
-    return `<div class="mob-sd-item${active}" onclick="App.closeSidebar();App.go('${route}')"><span class="sd-item-icon">${icon}</span>${label}</div>`;
+    return `<div class="mob-sd-item${active}" data-route="${route}" onclick="App.closeSidebar();App.go('${route}')"><span class="sd-item-icon">${icon}</span>${label}</div>`;
   }
   function openSidebar() { if (!_sidebarBuilt) buildSidebar(); document.getElementById('sidebar-overlay')?.classList.add('open'); document.getElementById('sidebar-panel')?.classList.add('open'); }
   function closeSidebar() { document.getElementById('sidebar-overlay')?.classList.remove('open'); document.getElementById('sidebar-panel')?.classList.remove('open'); }
