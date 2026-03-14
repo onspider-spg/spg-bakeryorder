@@ -411,7 +411,8 @@ const Scr3 = (() => {
     try {
       const resp = await API.togglePermission({ function_id: functionId, tier_id: tierId, allowed: newOn });
       if (resp.success) {
-        App.toast(functionId + ' × ' + tierId + ' → ' + (newOn ? 'ON' : 'OFF'), 'success');
+        const d = resp.debug || {};
+        App.toast(d.perm_id + ': sent=' + d.sent_allowed + ' existed=' + d.existed + ' old=' + d.old_allowed + ' verified=' + d.verified_allowed, 'success');
       } else {
         // Rollback
         _accessData.permissions[key] = wasOn;
