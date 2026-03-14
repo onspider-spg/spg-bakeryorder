@@ -1,9 +1,9 @@
 /**
- * Version 1.7 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6.6 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Phase 1B: BC Dashboard + Sidebar BC + Quota bug fix
+ * Phase 2: Create Order support
  * ═══════════════════════════════════════════
  */
 
@@ -43,7 +43,7 @@ const App = (() => {
     'no-token':      { render: () => Scr.renderNoToken(),       title: 'Login Required' },
     'invalid-token': { render: () => Scr.renderInvalidToken(),  title: 'Session Expired' },
     'blocked':       { render: () => Scr.renderBlocked(),       title: 'Access Denied' },
-    'home':          { render: () => S.role === 'bc' ? Scr2.renderBCDashboard() : Scr.renderDashboard(), title: 'Dashboard', onLoad: () => S.role === 'bc' ? loadBCDashboard() : loadDashboardData() },
+    'home':          { render: () => Scr.renderDashboard(),     title: 'Dashboard',      onLoad: () => loadDashboardData() },
     'browse':        { render: () => Scr.renderBrowse(),        title: 'Create Order',   onLoad: () => loadBrowseData() },
     'cart':          { render: () => Scr.renderCart(),           title: 'Cart' },
     'orders':        { render: () => Scr.renderOrders(),        title: 'View Orders',    onLoad: () => loadOrders() },
@@ -51,13 +51,6 @@ const App = (() => {
     'quota':         { render: () => Scr.renderQuota(),         title: 'Set Quota',      onLoad: () => loadQuotaScreen() },
     'waste':         { render: () => Scr.renderWaste(),         title: 'Waste Log',      onLoad: () => loadWasteScreen() },
     'returns':       { render: () => Scr.renderReturns(),       title: 'Returns',        onLoad: () => loadReturnsScreen() },
-    // BC-only routes (Phase 2+)
-    'accept':        { render: () => Scr2.renderAccept(),       title: 'Accept Order' },
-    'fulfil':        { render: () => Scr2.renderFulfil(),       title: 'Fulfilment' },
-    'print':         { render: () => Scr2.renderPrint(),        title: 'Print Centre' },
-    'bc-returns':    { render: () => Scr2.renderBCReturns(),    title: 'Incoming Returns' },
-    'products':      { render: () => Scr2.renderProducts(),     title: 'Manage Products' },
-    'prod-edit':     { render: (p) => Scr2.renderProdEdit(p),   title: 'Edit Product' },
   };
 
   // ─── NAVIGATE ───
@@ -67,7 +60,7 @@ const App = (() => {
     currentRoute = route;
     currentParams = params;
 
-    const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns','accept','fulfil','print','bc-returns','products','prod-edit'];
+    const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns'];
     if (authScreens.includes(route) && S.session) {
       if (!_shellMounted) mountShell();
       const main = document.querySelector('.shell-main');
@@ -132,13 +125,6 @@ const App = (() => {
     } catch {}
   }
 
-  async function loadBCDashboard() {
-    try {
-      const resp = await API.getDashboard();
-      if (resp.success) { S.dashboard = resp.data; Scr2.fillBCDashboard(); }
-    } catch {}
-  }
-
   // ─── Shared: ensure products in memory (memory → cache → API) ───
   async function ensureProducts() {
     if (S._prodsLoaded) return;
@@ -185,14 +171,7 @@ const App = (() => {
     if (S._prodsLoaded && S._quotasDay !== dow) {
       try {
         const resp = await API.getQuotas({ day: String(dow) });
-        if (resp.success) {
-          const flat = {};
-          for (const pid in resp.data) {
-            flat[pid] = resp.data[pid]?.[dow] ?? 0;
-          }
-          S.quotas = flat;
-          S._quotasDay = dow;
-        }
+        if (resp.success) { S.quotas = resp.data; S._quotasDay = dow; }
       } catch {}
       Scr.fillBrowse();
       return;
@@ -221,15 +200,7 @@ const App = (() => {
     if (S._quotasDay === dow) return;
     try {
       const resp = await API.getQuotas({ day: String(dow) });
-      if (resp.success) {
-        // Flatten nested 7-day map → flat map for this day
-        const flat = {};
-        for (const pid in resp.data) {
-          flat[pid] = resp.data[pid]?.[dow] ?? 0;
-        }
-        S.quotas = flat;
-        S._quotasDay = dow;
-      }
+      if (resp.success) { S.quotas = resp.data; S._quotasDay = dow; }
     } catch {}
   }
 
@@ -379,55 +350,30 @@ const App = (() => {
     const cl = S.sidebarCollapsed ? ' collapsed' : '';
     const sd = appEl().querySelector('.sidebar');
     if (!sd) return;
-    const isBC = S.sidebarRole === 'bc' || S.sidebarRole === 'admin';
-    const isStore = S.sidebarRole === 'store' || S.sidebarRole === 'admin';
 
     let html = `<div class="sidebar-top"><div class="sidebar-toggle" onclick="App.toggleSidebar()">☰</div></div>`;
     html += sdItem('home', '◇', 'Dashboard');
     html += '<div style="height:12px"></div>';
 
-    if (isStore && S.role === 'store') {
-      // Store sidebar (original)
-      const orderItems = [
-        { r: 'browse', lbl: 'Create Order', perm: 'fn_create_order', action: 'App.goToBrowse()' },
-        { r: 'orders', lbl: 'View Orders', perm: 'fn_view_own_orders' },
-        { r: 'quota',  lbl: 'Set Quota',   perm: 'fn_create_order' },
-      ];
-      html += sdGroup('orders', '⊞', 'Orders', orderItems.filter(i => !i.perm || hasPerm(i.perm)).map(
-        i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="${i.action || "App.go('" + i.r + "')"}">${i.lbl}</div>`
-      ).join(''));
-      const recordItems = [
-        { r: 'waste',   lbl: 'Waste Log', perm: 'fn_view_waste' },
-        { r: 'returns', lbl: 'Returns',   perm: 'fn_view_returns' },
-      ];
-      html += sdGroup('records', '▤', 'Records', recordItems.filter(i => !i.perm || hasPerm(i.perm)).map(
-        i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
-      ).join(''));
-    }
+    const orderItems = [
+      { r: 'browse', lbl: 'Create Order', perm: 'fn_create_order', action: 'App.goToBrowse()' },
+      { r: 'orders', lbl: 'View Orders', perm: 'fn_view_own_orders' },
+      { r: 'quota',  lbl: 'Set Quota',   perm: 'fn_create_order' },
+    ];
+    html += sdGroup('orders', '⊞', 'Orders', orderItems.filter(i => !i.perm || hasPerm(i.perm)).map(
+      i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="${i.action || "App.go('" + i.r + "')"}">${i.lbl}</div>`
+    ).join(''));
 
-    if (isBC && S.role === 'bc') {
-      // BC sidebar
-      const bcOrderItems = [
-        { r: 'orders', lbl: 'View Orders' },
-        { r: 'print',  lbl: 'Print Centre' },
-      ];
-      html += sdGroup('orders', '⊞', 'Orders', bcOrderItems.map(
-        i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
-      ).join(''));
-      const bcRecordItems = [
-        { r: 'waste',      lbl: 'Waste Log' },
-        { r: 'bc-returns', lbl: 'Incoming Returns' },
-      ];
-      html += sdGroup('records', '▤', 'Records', bcRecordItems.map(
-        i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
-      ).join(''));
-      if (hasPerm('fn_manage_products')) {
-        html += sdGroup('admin', '⚙', 'Admin', `<div class="sd-flyout-item${currentRoute === 'products' ? ' active' : ''}" data-route="products" onclick="App.go('products')">Manage Products</div>`);
-      }
-    }
+    const recordItems = [
+      { r: 'waste',   lbl: 'Waste Log', perm: 'fn_view_waste' },
+      { r: 'returns', lbl: 'Returns',   perm: 'fn_view_returns' },
+    ];
+    html += sdGroup('records', '▤', 'Records', recordItems.filter(i => !i.perm || hasPerm(i.perm)).map(
+      i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
+    ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.7 | 14 Mar 2026</div>
+      <div class="sd-version">v1.6.6 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -465,30 +411,14 @@ const App = (() => {
     const init = (s.display_name || '?').charAt(0).toUpperCase();
     let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(init)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}</div></div></div>`;
     html += mobItem('home', '◇', 'Dashboard');
-
-    if (S.role === 'store') {
-      html += '<div style="height:8px"></div><div class="mob-sidebar-section">Orders</div>';
-      if (hasPerm('fn_create_order')) html += `<div class="mob-sd-item" data-route="browse" onclick="App.closeSidebar();App.goToBrowse()"><span class="sd-item-icon">⊞</span>Create Order</div>`;
-      if (hasPerm('fn_view_own_orders')) html += mobItem('orders', '⊞', 'View Orders');
-      if (hasPerm('fn_create_order')) html += mobItem('quota', '⊞', 'Set Quota');
-      html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
-      if (hasPerm('fn_view_waste')) html += mobItem('waste', '▤', 'Waste Log');
-      if (hasPerm('fn_view_returns')) html += mobItem('returns', '▤', 'Returns');
-    } else {
-      // BC role
-      html += '<div style="height:8px"></div><div class="mob-sidebar-section">Orders</div>';
-      html += mobItem('orders', '⊞', 'View Orders');
-      html += mobItem('print', '⊞', 'Print Centre');
-      html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
-      html += mobItem('waste', '▤', 'Waste Log');
-      html += mobItem('bc-returns', '▤', 'Incoming Returns');
-      if (hasPerm('fn_manage_products')) {
-        html += '<div style="height:4px"></div><div class="mob-sidebar-section">Admin</div>';
-        html += mobItem('products', '⚙', 'Manage Products');
-      }
-    }
-
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.7</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += '<div style="height:8px"></div><div class="mob-sidebar-section">Orders</div>';
+    if (hasPerm('fn_create_order')) html += `<div class="mob-sd-item" data-route="browse" onclick="App.closeSidebar();App.goToBrowse()"><span class="sd-item-icon">⊞</span>Create Order</div>`;
+    if (hasPerm('fn_view_own_orders')) html += mobItem('orders', '⊞', 'View Orders');
+    if (hasPerm('fn_create_order')) html += mobItem('quota', '⊞', 'Set Quota');
+    html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
+    if (hasPerm('fn_view_waste')) html += mobItem('waste', '▤', 'Waste Log');
+    if (hasPerm('fn_view_returns')) html += mobItem('returns', '▤', 'Returns');
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.6.6</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -596,7 +526,7 @@ const App = (() => {
     openSidebar, closeSidebar, toggleSidebar,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,
-    loadBCDashboard, getStoreName, getDeptName,
+    getStoreName, getDeptName,
     sydneyNow, fmtDate, todaySydney, tomorrowSydney, fmtDateThai, fmtDateAU,
   };
 })();

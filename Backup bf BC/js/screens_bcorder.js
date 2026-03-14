@@ -1,9 +1,9 @@
 /**
- * Version 1.5.7 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.6 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store)
- * Fix: Quota save diff + dual save buttons
+ * Fix: Auto-suggest recalculate + fillBrowse dedup + Quota category filter
  * ═══════════════════════════════════════════
  */
 
@@ -692,12 +692,10 @@ const Scr = (() => {
   const DAY_MAP = [1,2,3,4,5,6,0]; // display order → day_of_week
   let _quotaSearch = '';
   let _quotaCatFilter = 'all';
-  let _quotaSnapshot = {};
 
   function renderQuota() {
     _quotaSearch = '';
     _quotaCatFilter = 'all';
-    _quotaSnapshot = {};
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Set Quota</div></div>
       <div class="content" id="quotaContent"><div class="skel skel-card"></div><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
   }
@@ -712,13 +710,10 @@ const Scr = (() => {
     const catChips = `<div class="chip${_quotaCatFilter === 'all' ? ' active' : ''}" onclick="Scr.setQuotaCat('all')">ทั้งหมด</div>` +
       cats.map(c => `<div class="chip${_quotaCatFilter === c.cat_id ? ' active' : ''}" onclick="Scr.setQuotaCat('${c.cat_id}')">${App.esc(c.cat_name)}</div>`).join('');
 
-    const saveBtn = '<div style="display:flex;justify-content:center;margin-bottom:12px"><button class="btn btn-primary" style="padding:10px 40px" id="quotaSaveBtnTop" onclick="Scr.saveQuota()">💾 บันทึก</button></div>';
-
     el.innerHTML = `<div class="q-wrap">
       <div style="font-size:11px;color:var(--t3);margin-bottom:8px">โควตาต่อวัน · ${prods.length} สินค้า</div>
       <input class="search-input" placeholder="🔍 ค้นหา..." value="${App.esc(_quotaSearch)}" oninput="Scr.filterQuota(this.value)" style="max-width:400px;margin-bottom:8px">
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${catChips}</div>
-      ${saveBtn}
       <div id="quotaDesk" class="q-desk-only"></div>
       <div id="quotaMob" class="q-mob-only"></div>
       <div style="display:flex;justify-content:center;margin:14px 0">
@@ -727,15 +722,6 @@ const Scr = (() => {
     </div>`;
     renderQuotaTable();
     renderQuotaMobile();
-
-    // Snapshot for diff save
-    _quotaSnapshot = {};
-    prods.forEach(p => {
-      const pq = (App.S.quotaMap || {})[p.product_id] || {};
-      DAY_MAP.forEach(dow => {
-        _quotaSnapshot[p.product_id + '-' + dow] = pq[dow] || 0;
-      });
-    });
   }
 
   function getFilteredProducts() {
@@ -830,43 +816,36 @@ const Scr = (() => {
 
   async function saveQuota() {
     const btn = document.getElementById('quotaSaveBtn');
-    const btnTop = document.getElementById('quotaSaveBtnTop');
-    if (btn?.disabled || btnTop?.disabled) return;
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = 'กำลังบันทึก...';
 
-    // Collect only changed values (diff against snapshot)
-    const changed = [];
+    // Collect all values from inputs (both desktop and mobile)
+    const quotas = [];
     App.S.products.forEach(p => {
       DAY_MAP.forEach(dow => {
         const inp = document.getElementById('qi-' + p.product_id + '-' + dow);
-        if (!inp) return;
-        const newVal = parseInt(inp.value) || 0;
-        const oldVal = _quotaSnapshot[p.product_id + '-' + dow] || 0;
-        if (newVal !== oldVal) {
-          changed.push({ product_id: p.product_id, day_of_week: dow, quota_qty: newVal });
+        if (inp) {
+          quotas.push({ product_id: p.product_id, day_of_week: dow, quota_qty: parseInt(inp.value) || 0 });
         }
       });
     });
-
-    if (!changed.length) { App.toast('ไม่มีการเปลี่ยนแปลง', 'warning'); return; }
-
-    // Disable both buttons
-    if (btn) { btn.disabled = true; btn.textContent = 'กำลังบันทึก...'; }
-    if (btnTop) { btnTop.disabled = true; btnTop.textContent = 'กำลังบันทึก...'; }
 
     try {
       const resp = await API.saveQuotas({
         store_id: App.S.session.store_id,
         dept_id: App.S.session.dept_id,
-        quotas: changed,
+        quotas,
       });
       if (resp.success) {
-        App.toast(`✅ บันทึก ${changed.length} รายการ`, 'success');
-        // Update memory + snapshot
-        changed.forEach(q => {
-          if (!App.S.quotaMap[q.product_id]) App.S.quotaMap[q.product_id] = {};
-          App.S.quotaMap[q.product_id][q.day_of_week] = q.quota_qty;
-          _quotaSnapshot[q.product_id + '-' + q.day_of_week] = q.quota_qty;
+        App.toast(resp.message || '✅ บันทึกแล้ว', 'success');
+        // Update memory
+        const newMap = {};
+        quotas.forEach(q => {
+          if (!newMap[q.product_id]) newMap[q.product_id] = {};
+          newMap[q.product_id][q.day_of_week] = q.quota_qty;
         });
+        App.S.quotaMap = newMap;
         App.S._quotasDay = -1; // invalidate browse quotas cache
       } else {
         App.toast(resp.message || 'Error', 'error');
@@ -874,8 +853,8 @@ const Scr = (() => {
     } catch (e) {
       App.toast('Network error: ' + e.message, 'error');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '💾 บันทึก'; }
-      if (btnTop) { btnTop.disabled = false; btnTop.textContent = '💾 บันทึก'; }
+      btn.disabled = false;
+      btn.textContent = '💾 บันทึก';
     }
   }
   // ═══ WASTE LOG ═══
