@@ -1,9 +1,9 @@
 /**
- * Version 2.2.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 2.2.3 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: Topbar gear+name, sidebar reorder, remove notification
+ * Fix: Promise.all parallel loading, DRY loaders, esc() cache, debounce, stopSessionMonitor
  * ═══════════════════════════════════════════
  */
 
@@ -142,16 +142,13 @@ const App = (() => {
   async function loadDashboardData() {
     try {
       const resp = await API.getDashboard();
-      if (resp.success) { S.dashboard = resp.data; Scr.fillDashboard(); }
-    } catch {}
+      if (resp.success) {
+        S.dashboard = resp.data;
+        S.role === 'bc' ? Scr2.fillBCDashboard() : Scr.fillDashboard();
+      }
+    } catch (e) { console.error('Dashboard load:', e); }
   }
-
-  async function loadBCDashboard() {
-    try {
-      const resp = await API.getDashboard();
-      if (resp.success) { S.dashboard = resp.data; Scr2.fillBCDashboard(); }
-    } catch {}
-  }
+  const loadBCDashboard = loadDashboardData;
 
   // ─── Shared: ensure products in memory (memory → cache → API) ───
   async function ensureProducts() {
@@ -207,7 +204,7 @@ const App = (() => {
           S.quotas = flat;
           S._quotasDay = dow;
         }
-      } catch {}
+      } catch (e) { console.error('Quota load:', e); }
       Scr.fillBrowse();
       return;
     }
@@ -244,7 +241,7 @@ const App = (() => {
         S.quotas = flat;
         S._quotasDay = dow;
       }
-    } catch {}
+    } catch (e) { console.error('Quota reload:', e); }
   }
 
   async function loadOrders(force) {
@@ -258,50 +255,18 @@ const App = (() => {
     Scr.fillOrders();
   }
 
-  async function loadOrderDetail(orderId) {
+  // ─── Shared order loader — reused by detail, accept, fulfil ───
+  async function _loadOrderFor(orderId, fillFn) {
     if (!orderId) return;
     try {
       const resp = await API.getOrderDetail(orderId);
-      if (resp.success) {
-        S.currentOrder = resp.data;
-        Scr.fillOrderDetail();
-      } else {
-        toast(resp.message || 'ไม่พบออเดอร์', 'error');
-      }
-    } catch (e) {
-      toast('Network error', 'error');
-    }
+      if (resp.success) { S.currentOrder = resp.data; fillFn(); }
+      else { toast(resp.message || 'ไม่พบออเดอร์', 'error'); }
+    } catch (e) { toast('Network error', 'error'); }
   }
-
-  async function loadAcceptOrder(orderId) {
-    if (!orderId) return;
-    try {
-      const resp = await API.getOrderDetail(orderId);
-      if (resp.success) {
-        S.currentOrder = resp.data;
-        Scr2.fillAccept();
-      } else {
-        toast(resp.message || 'ไม่พบออเดอร์', 'error');
-      }
-    } catch (e) {
-      toast('Network error', 'error');
-    }
-  }
-
-  async function loadFulfilOrder(orderId) {
-    if (!orderId) return;
-    try {
-      const resp = await API.getOrderDetail(orderId);
-      if (resp.success) {
-        S.currentOrder = resp.data;
-        Scr2.fillFulfil();
-      } else {
-        toast(resp.message || 'ไม่พบออเดอร์', 'error');
-      }
-    } catch (e) {
-      toast('Network error', 'error');
-    }
-  }
+  function loadOrderDetail(orderId) { return _loadOrderFor(orderId, () => Scr.fillOrderDetail()); }
+  function loadAcceptOrder(orderId) { return _loadOrderFor(orderId, () => Scr2.fillAccept()); }
+  function loadFulfilOrder(orderId) { return _loadOrderFor(orderId, () => Scr2.fillFulfil()); }
 
   async function loadPrintCentre(date) {
     const d = date || todaySydney();
@@ -317,11 +282,11 @@ const App = (() => {
   }
 
   async function loadBCReturnsData() {
-    await ensureProducts();
-    try {
-      const resp = await API.getReturns();
-      if (resp.success) { S.returns = resp.data; S._retsLoaded = true; }
-    } catch {}
+    const [_, resp] = await Promise.all([
+      ensureProducts(),
+      API.getReturns().catch(() => ({ success: false })),
+    ]);
+    if (resp.success) { S.returns = resp.data; S._retsLoaded = true; }
     Scr2.fillBCReturns();
   }
 
@@ -348,12 +313,11 @@ const App = (() => {
   }
 
   async function loadQuotaScreen() {
-    await ensureProducts();
-    // Full 7-day quota map
-    try {
-      const resp = await API.getQuotas({});
-      if (resp.success) S.quotaMap = resp.data || {};
-    } catch {}
+    const [_, quotaResp] = await Promise.all([
+      ensureProducts(),
+      API.getQuotas({}).catch(() => ({ success: false })),
+    ]);
+    if (quotaResp.success) S.quotaMap = quotaResp.data || {};
     Scr.fillQuota();
   }
 
@@ -370,8 +334,7 @@ const App = (() => {
   }
 
   async function loadWasteScreen() {
-    await ensureProducts();
-    await loadWaste();
+    await Promise.all([ensureProducts(), loadWaste()]);
   }
 
   async function loadReturns(force) {
@@ -386,8 +349,7 @@ const App = (() => {
   }
 
   async function loadReturnsScreen() {
-    await ensureProducts();
-    await loadReturns();
+    await Promise.all([ensureProducts(), loadReturns()]);
   }
 
   // ═══ Phase 7: ADMIN DATA LOADERS ═══
@@ -613,7 +575,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2.2 | 14 Mar 2026</div>
+      <div class="sd-version">v2.2.3 | 15 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -692,7 +654,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.2</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.3</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -737,8 +699,10 @@ const App = (() => {
   }
 
   // ═══ HELPERS ═══
+  function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
   function hasPerm(fnId) { const tl = parseInt((S.session?.tier_id || 'T9').replace('T', '')); return tl <= 2 || S.permissions.includes(fnId); }
-  function esc(str) { if (str == null) return ''; const d = document.createElement('div'); d.textContent = String(str); return d.innerHTML; }
+  const _escEl = document.createElement('div');
+  function esc(str) { if (str == null) return ''; _escEl.textContent = String(str); return _escEl.innerHTML; }
   function getInitials(name) {
     if (!name) return '?';
     const parts = name.trim().split(/\s+/);
@@ -761,10 +725,11 @@ const App = (() => {
     _sessionTimer = setInterval(() => {
       const exp = S.session?.expires_at; if (!exp) return;
       const rem = new Date(exp).getTime() - Date.now();
-      if (rem <= 0) { clearInterval(_sessionTimer); API.clearToken(); go('invalid-token', {}, true); toast('⏰ Session หมดอายุ', 'error'); }
+      if (rem <= 0) { stopSessionMonitor(); API.clearToken(); go('invalid-token', {}, true); toast('⏰ Session หมดอายุ', 'error'); }
       else if (rem <= 10 * 60000 && rem > 9.5 * 60000) { toast('⏰ Session จะหมดอายุใน ' + Math.round(rem / 60000) + ' นาที', 'warning'); }
     }, 30000);
   }
+  function stopSessionMonitor() { if (_sessionTimer) { clearInterval(_sessionTimer); _sessionTimer = null; } }
 
   // ═══ INIT ═══
   async function init() {
@@ -805,9 +770,9 @@ const App = (() => {
   document.addEventListener('DOMContentLoaded', init);
 
   return {
-    S, go, toast, showDialog, closeDialog, esc,
+    S, go, toast, showDialog, closeDialog, esc, debounce,
     showProfilePopup, startOrder, goToBrowse, hasPerm, refreshCurrent,
-    openSidebar, closeSidebar, toggleSidebar,
+    openSidebar, closeSidebar, toggleSidebar, stopSessionMonitor,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,
     loadBCDashboard, loadPrintCentre, loadBCReturnsData, loadAdminProducts, loadProdEdit,

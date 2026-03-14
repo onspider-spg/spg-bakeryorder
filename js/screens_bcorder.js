@@ -1,9 +1,9 @@
 /**
- * Version 1.5.8 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.9 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Phase 2: View Orders BC section filter + click action
+ * Fix: Debounced product search (250ms)
  * ═══════════════════════════════════════════
  */
 
@@ -101,7 +101,7 @@ const Scr = (() => {
           <span class="date-display">${App.fmtDateThai(dd)}</span>
         </div>
         <div class="search-bar">
-          <input class="search-input" placeholder="🔍 ค้นหาสินค้า..." value="${App.esc(App.S.productSearch)}" oninput="App.S.productSearch=this.value;Scr.filterProducts()">
+          <input class="search-input" placeholder="🔍 ค้นหาสินค้า..." value="${App.esc(App.S.productSearch)}" oninput="App.S.productSearch=this.value;Scr.dFilterProducts()">
         </div>
         <div class="cat-chips" id="catChips"></div>
       </div>
@@ -142,6 +142,10 @@ const Scr = (() => {
     el.innerHTML = '<div class="product-grid">' + filtered.map(p => renderProductCard(p, sp, quotas[p.product_id])).join('') + '</div>';
     updateCartFooter();
   }
+
+  // ─── Debounced version for search input (250ms) ───
+  let _dfpTimer = null;
+  function dFilterProducts() { clearTimeout(_dfpTimer); _dfpTimer = setTimeout(filterProducts, 250); }
 
   function renderProductCard(p, stockPoints, quotaVal) {
     const cart = App.getCartItem(p.product_id);
@@ -1346,7 +1350,7 @@ const Scr = (() => {
   return {
     renderLoading, renderNoToken, renderInvalidToken, renderBlocked,
     renderDashboard, fillDashboard,
-    renderBrowse, fillBrowse, filterProducts,
+    renderBrowse, fillBrowse, filterProducts, dFilterProducts,
     setDate, step, toggleUrg, onStock1, onStock2,
     renderCart, removeCartItem, submitOrder,
     renderOrders, fillOrders, sortOrders, renderOrderDetail, fillOrderDetail,

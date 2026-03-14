@@ -1,9 +1,9 @@
 /**
- * Version 1.3.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.3.3 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
- * Fix: User Access save button
+ * Fix: User Access boolean comparison, debounced vis search, DRY date presets
  * ═══════════════════════════════════════════
  */
 
@@ -19,6 +19,13 @@ const Scr3 = (() => {
   const ROLE_COLORS = {
     store: 'var(--blue)', bc_production: 'var(--green)', bc_management: 'var(--acc)', not_applicable: 'var(--t4)',
   };
+
+  // ─── Shared: resolve date preset → { from, to } ───
+  function _datePreset(p) {
+    if (p === 'today') return { from: App.todaySydney(), to: App.todaySydney() };
+    if (p === '30d') { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); return { from: App.fmtDate(d), to: App.todaySydney() }; }
+    return { from: '', to: '' }; // 'all'
+  }
 
   // ═══ PLACEHOLDER (for screens not yet built) ═══
   function placeholder(title, icon) {
@@ -238,7 +245,7 @@ const Scr3 = (() => {
       ${sortedSecs.map(s => `<div class="chip${_visSection === s ? ' active' : ''}" onclick="Scr3.setVisSection('${App.esc(s)}')">${App.esc(s)}</div>`).join('')}
     </div>`;
 
-    const search = `<input class="search-input" style="max-width:300px;margin-bottom:8px" placeholder="🔍 Search products..." value="${App.esc(_visSearch)}" oninput="Scr3.filterVis(this.value)">`;
+    const search = `<input class="search-input" style="max-width:300px;margin-bottom:8px" placeholder="🔍 Search products..." value="${App.esc(_visSearch)}" oninput="Scr3.dFilterVis(this.value)">`;
 
     // Filter products
     let filtered = prods.filter(p => p.is_active);
@@ -285,6 +292,9 @@ const Scr3 = (() => {
 
   function setVisSection(sec) { _visSection = sec; fillVisibility(); }
   function filterVis(val) { _visSearch = val; fillVisibility(); }
+  // ─── Debounced version for search input (250ms) ───
+  let _dfvTimer = null;
+  function dFilterVis(val) { _visSearch = val; clearTimeout(_dfvTimer); _dfvTimer = setTimeout(fillVisibility, 250); }
 
   // ─── Optimistic toggle — update UI first, sync DB, rollback on fail ───
   async function toggleVis(productId, storeId, deptId) {
@@ -367,7 +377,7 @@ const Scr3 = (() => {
       sections[sec].forEach(f => {
         const cells = tiers.map(t => {
           const key = f.function_id + '|' + t;
-          const on = perms[key] === true;
+          const on = !!perms[key];
           return `<td class="acc-cell" id="ac-${f.function_id}-${t}" onclick="Scr3.togglePerm('${f.function_id}','${t}')">
             <div class="acc-toggle${on ? ' acc-on' : ''}">${on ? '✅' : '—'}</div>
           </td>`;
@@ -396,39 +406,33 @@ const Scr3 = (() => {
   async function togglePerm(functionId, tierId) {
     if (!_accessData) { App.toast('No access data loaded', 'error'); return; }
     const key = functionId + '|' + tierId;
-    const wasOn = _accessData.permissions[key] === true;
+    const wasOn = !!_accessData.permissions[key];
     const newOn = !wasOn;
 
     // Optimistic UI
     _accessData.permissions[key] = newOn;
     const cell = document.getElementById('ac-' + functionId + '-' + tierId);
-    if (cell) {
+    function setUI(on) {
+      if (!cell) return;
       const inner = cell.querySelector('.acc-toggle');
-      if (inner) { inner.className = 'acc-toggle' + (newOn ? ' acc-on' : ''); inner.textContent = newOn ? '✅' : '—'; }
+      if (inner) { inner.className = 'acc-toggle' + (on ? ' acc-on' : ''); inner.textContent = on ? '✅' : '—'; }
     }
+    setUI(newOn);
 
-    // Sync DB — with visible feedback
+    // Sync DB
     try {
       const resp = await API.togglePermission({ function_id: functionId, tier_id: tierId, allowed: newOn });
       if (resp.success) {
-        const d = resp.debug || {};
-        App.toast(d.perm_id + ': sent=' + d.sent_allowed + ' existed=' + d.existed + ' old=' + d.old_allowed + ' verified=' + d.verified_allowed, 'success');
+        App.toast('✅ อัพเดท Permission', 'success');
       } else {
-        // Rollback
         _accessData.permissions[key] = wasOn;
-        if (cell) {
-          const inner = cell.querySelector('.acc-toggle');
-          if (inner) { inner.className = 'acc-toggle' + (wasOn ? ' acc-on' : ''); inner.textContent = wasOn ? '✅' : '—'; }
-        }
-        App.toast('FAIL: ' + (resp.error || '') + ' ' + (resp.message || ''), 'error');
+        setUI(wasOn);
+        App.toast(resp.message || 'Error', 'error');
       }
     } catch (e) {
       _accessData.permissions[key] = wasOn;
-      if (cell) {
-        const inner = cell.querySelector('.acc-toggle');
-        if (inner) { inner.className = 'acc-toggle' + (wasOn ? ' acc-on' : ''); inner.textContent = wasOn ? '✅' : '—'; }
-      }
-      App.toast('CATCH: ' + e.message, 'error');
+      setUI(wasOn);
+      App.toast('Network error', 'error');
     }
   }
 
@@ -495,8 +499,7 @@ const Scr3 = (() => {
 
   function setWDDate(which, val) { if (which === 'from') _wdDateFrom = val; else _wdDateTo = val; App.loadWasteDashboard(_wdDateFrom, _wdDateTo); }
   function setWDPreset(p) {
-    if (p === '30d') { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _wdDateFrom = App.fmtDate(d); _wdDateTo = App.todaySydney(); }
-    else { _wdDateFrom = ''; _wdDateTo = ''; }
+    const r = _datePreset(p); _wdDateFrom = r.from; _wdDateTo = r.to;
     App.loadWasteDashboard(_wdDateFrom, _wdDateTo);
   }
 
@@ -558,8 +561,7 @@ const Scr3 = (() => {
 
   function setTPDate(which, val) { if (which === 'from') _tpDateFrom = val; else _tpDateTo = val; App.loadTopProducts(_tpDateFrom, _tpDateTo); }
   function setTPPreset(p) {
-    if (p === '30d') { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _tpDateFrom = App.fmtDate(d); _tpDateTo = App.todaySydney(); }
-    else { _tpDateFrom = ''; _tpDateTo = ''; }
+    const r = _datePreset(p); _tpDateFrom = r.from; _tpDateTo = r.to;
     App.loadTopProducts(_tpDateFrom, _tpDateTo);
   }
 
@@ -636,8 +638,7 @@ const Scr3 = (() => {
 
   function setCODate(which, val) { if (which === 'from') _coDateFrom = val; else _coDateTo = val; _coShowCount = 10; App.loadCutoffData(_coDateFrom, _coDateTo); }
   function setCOPreset(p) {
-    if (p === 'today') { _coDateFrom = App.todaySydney(); _coDateTo = App.todaySydney(); }
-    else { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _coDateFrom = App.fmtDate(d); _coDateTo = App.todaySydney(); }
+    const r = _datePreset(p); _coDateFrom = r.from; _coDateTo = r.to;
     _coShowCount = 10;
     App.loadCutoffData(_coDateFrom, _coDateTo);
   }
@@ -730,8 +731,7 @@ const Scr3 = (() => {
 
   function setAUDate(which, val) { if (which === 'from') _auDateFrom = val; else _auDateTo = val; _auShowCount = 15; App.loadAuditData(_auDateFrom, _auDateTo); }
   function setAUPreset(p) {
-    if (p === '30d') { const d = new Date(App.sydneyNow()); d.setDate(d.getDate() - 30); _auDateFrom = App.fmtDate(d); _auDateTo = App.todaySydney(); }
-    else { _auDateFrom = ''; _auDateTo = ''; }
+    const r = _datePreset(p); _auDateFrom = r.from; _auDateTo = r.to;
     _auShowCount = 15;
     App.loadAuditData(_auDateFrom, _auDateTo);
   }
@@ -741,7 +741,7 @@ const Scr3 = (() => {
   return {
     renderConfig, fillConfig, editConfig, saveConfig,
     renderDeptMapping, fillDeptMapping, editDeptMapping, saveDeptMapping,
-    renderVisibility, fillVisibility, setVisSection, filterVis, toggleVis,
+    renderVisibility, fillVisibility, setVisSection, filterVis, dFilterVis, toggleVis,
     renderAccess, fillAccess, setAccessData, togglePerm,
     renderWasteDashboard, fillWasteDashboard, setWDDate, setWDPreset,
     renderTopProducts, fillTopProducts, setTPDate, setTPPreset,
