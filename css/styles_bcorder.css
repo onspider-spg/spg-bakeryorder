@@ -1,6 +1,6 @@
-/* Version 1.6 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.7 | 14 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
-/* Phase 7: Admin screens (adm-list, adm-row, role-badge) */
+/* Phase 8: Visibility Matrix + Access Matrix tables */
 
 /* ═══ DESIGN TOKENS ═══ */
 :root {
@@ -678,6 +678,31 @@ html, body {
   display: inline-block; padding: 2px 8px; border-radius: 4px;
   font-size: var(--fs-xs); font-weight: 600; white-space: nowrap;
 }
+
+/* ═══ VISIBILITY MATRIX (Phase 8) ═══ */
+.vis-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
+.vis-tbl th { padding: 8px 6px; text-align: center; font-weight: 600; font-size: 9px; color: var(--t1); border-bottom: 2px solid var(--bd); background: var(--bg); white-space: nowrap; }
+.vis-tbl td { padding: 6px 4px; border-bottom: 1px solid var(--bd2); text-align: center; vertical-align: middle; }
+.vis-tbl tbody tr:hover { background: var(--bg3); }
+.vis-prod-name { text-align: left !important; padding-left: 10px !important; font-weight: 600; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.vis-th-ch { min-width: 52px; }
+.vis-cell { cursor: pointer; }
+.vis-cell:hover { background: var(--acc2); }
+
+/* ═══ ACCESS MATRIX (Phase 8) ═══ */
+.acc-tbl { width: 100%; border-collapse: collapse; font-size: 11px; }
+.acc-tbl th { padding: 8px 6px; text-align: center; font-weight: 600; font-size: 10px; color: var(--t1); border-bottom: 2px solid var(--bd); background: var(--bg); }
+.acc-tbl td { padding: 5px 6px; border-bottom: 1px solid var(--bd2); vertical-align: middle; }
+.acc-tbl tbody tr:hover { background: var(--bg3); }
+.acc-th-tier { min-width: 32px; }
+.acc-sec-hd { padding: 6px 10px !important; font-size: 10px; font-weight: 700; color: var(--t3); text-transform: uppercase; background: var(--bg3); border-bottom: 1px solid var(--bd) !important; }
+.acc-fn-name { text-align: left; padding-left: 10px !important; }
+.acc-fn-label { font-size: 10px; font-weight: 600; display: block; }
+.acc-fn-id { font-size: 8px; color: var(--t4); font-family: monospace; }
+.acc-cell { text-align: center; cursor: pointer; }
+.acc-cell:hover { background: var(--acc2); }
+.acc-toggle { width: 24px; height: 24px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; background: var(--bg3); color: var(--t4); cursor: pointer; }
+.acc-toggle.acc-on { background: var(--green-bg); color: var(--green); }
 
 /* ═══ RESPONSIVE ═══ */
 @media (max-width: 768px) {

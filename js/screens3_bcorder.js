@@ -1,9 +1,9 @@
 /**
- * Version 1.0 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.1 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
- * Phase 7: Config + Dept Mapping + placeholders
+ * Phase 8: Visibility Matrix + User Access Matrix
  * ═══════════════════════════════════════════
  */
 
@@ -97,7 +97,7 @@ const Scr3 = (() => {
       if (resp.success) {
         App.closeDialog();
         App.toast('✅ บันทึกเรียบร้อย', 'success');
-        App.S.config[key] = newVal; // update memory
+        App.S.config[key] = newVal;
         fillConfig();
       } else {
         App.toast(resp.message || 'Error', 'error');
@@ -194,7 +194,6 @@ const Scr3 = (() => {
       if (resp.success) {
         App.closeDialog();
         App.toast('✅ บันทึกเรียบร้อย', 'success');
-        // Update memory
         const d = App.S.deptMappings.find(x => x.dept_id === deptId);
         if (d) { d.module_role = moduleRole; d.section_scope = sectionScope; d.is_active = isActive; }
         fillDeptMapping();
@@ -209,13 +208,227 @@ const Scr3 = (() => {
   }
 
   // ═══════════════════════════════════════════
-  // PLACEHOLDERS (Phase 8-10)
+  // PRODUCT VISIBILITY MATRIX (Phase 8)
   // ═══════════════════════════════════════════
 
-  function renderVisibility()     { return placeholder('Product Visibility', '👁️'); }
-  function fillVisibility()       {}
-  function renderAccess()         { return placeholder('User Access', '🔐'); }
-  function fillAccess()           {}
+  let _visSection = 'all';
+  let _visSearch = '';
+
+  function renderVisibility() {
+    _visSection = 'all';
+    _visSearch = '';
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Product Visibility</div></div>
+      <div class="content" id="visContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillVisibility() {
+    const el = document.getElementById('visContent');
+    if (!el) return;
+    const prods = App.S.adminProducts;
+    const channels = App.S.adminChannels;
+    if (!prods || !channels) { el.innerHTML = '<div class="empty"><div class="empty-icon">👁️</div><div class="empty-title">กำลังโหลด...</div></div>'; return; }
+
+    // Section filter
+    const secs = new Set();
+    prods.forEach(p => { if (p.section_id) secs.add(p.section_id); });
+    const sortedSecs = [...secs].sort();
+
+    const secChips = `<div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+      <div class="chip${_visSection === 'all' ? ' active' : ''}" onclick="Scr3.setVisSection('all')">All</div>
+      ${sortedSecs.map(s => `<div class="chip${_visSection === s ? ' active' : ''}" onclick="Scr3.setVisSection('${App.esc(s)}')">${App.esc(s)}</div>`).join('')}
+    </div>`;
+
+    const search = `<input class="search-input" style="max-width:300px;margin-bottom:8px" placeholder="🔍 Search products..." value="${App.esc(_visSearch)}" oninput="Scr3.filterVis(this.value)">`;
+
+    // Filter products
+    let filtered = prods.filter(p => p.is_active);
+    if (_visSection !== 'all') filtered = filtered.filter(p => p.section_id === _visSection);
+    if (_visSearch) { const s = _visSearch.toLowerCase(); filtered = filtered.filter(p => (p.product_name || '').toLowerCase().includes(s)); }
+    filtered.sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+
+    if (!filtered.length) {
+      el.innerHTML = `<div style="max-width:1100px;margin:0 auto">${secChips}${search}<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">ไม่พบสินค้า</div></div></div>`;
+      return;
+    }
+
+    // Build visibility Set for quick lookup
+    const visSet = new Set();
+    prods.forEach(p => {
+      (p.visibility || []).forEach(v => {
+        if (v.is_active !== false) visSet.add(p.product_id + '|' + v.store_id + '|' + v.dept_id);
+      });
+    });
+
+    // Table header
+    let thCols = channels.map(ch => `<th class="vis-th-ch">${App.esc(ch.store_id)}<br><span style="font-size:8px;color:var(--t4)">${App.esc(ch.dept_id)}</span></th>`).join('');
+
+    // Table rows
+    let rows = filtered.map(p => {
+      const cells = channels.map(ch => {
+        const key = p.product_id + '|' + ch.store_id + '|' + ch.dept_id;
+        const on = visSet.has(key);
+        return `<td class="vis-cell" id="vc-${p.product_id}-${ch.store_id}-${ch.dept_id}" onclick="Scr3.toggleVis('${p.product_id}','${ch.store_id}','${ch.dept_id}')">
+          <span style="color:${on ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${on ? '☑' : '☐'}</span>
+        </td>`;
+      }).join('');
+      return `<tr><td class="vis-prod-name">${App.esc(p.product_name)}</td>${cells}</tr>`;
+    }).join('');
+
+    const counter = `<div style="font-size:9px;color:var(--t3);margin-bottom:6px">Tap to toggle — ${filtered.length} products × ${channels.length} channels</div>`;
+
+    el.innerHTML = `<div style="max-width:1100px;margin:0 auto">${secChips}${search}${counter}
+      <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd);overflow-x:auto">
+        <table class="vis-tbl"><thead><tr><th style="text-align:left;min-width:140px">Product</th>${thCols}</tr></thead><tbody>${rows}</tbody></table>
+      </div>
+    </div>`;
+  }
+
+  function setVisSection(sec) { _visSection = sec; fillVisibility(); }
+  function filterVis(val) { _visSearch = val; fillVisibility(); }
+
+  // ─── Optimistic toggle — update UI first, sync DB, rollback on fail ───
+  async function toggleVis(productId, storeId, deptId) {
+    const key = productId + '|' + storeId + '|' + deptId;
+    const p = (App.S.adminProducts || []).find(x => x.product_id === productId);
+    if (!p) return;
+
+    // Find current state
+    const vis = p.visibility || [];
+    const idx = vis.findIndex(v => v.store_id === storeId && v.dept_id === deptId);
+    const wasOn = idx >= 0 && vis[idx].is_active !== false;
+    const newOn = !wasOn;
+
+    // Optimistic UI
+    const cellId = 'vc-' + productId + '-' + storeId + '-' + deptId;
+    const cell = document.getElementById(cellId);
+    if (cell) cell.innerHTML = `<span style="color:${newOn ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${newOn ? '☑' : '☐'}</span>`;
+
+    // Update memory
+    if (newOn) {
+      if (idx >= 0) { vis[idx].is_active = true; }
+      else { vis.push({ store_id: storeId, dept_id: deptId, is_active: true }); }
+    } else {
+      if (idx >= 0) vis.splice(idx, 1);
+    }
+
+    // Sync DB (fire-and-forget with rollback)
+    try {
+      const resp = await API.toggleVisibility({ product_id: productId, store_id: storeId, dept_id: deptId, visible: newOn });
+      if (!resp.success) {
+        // Rollback
+        if (newOn) { const ri = vis.findIndex(v => v.store_id === storeId && v.dept_id === deptId); if (ri >= 0) vis.splice(ri, 1); }
+        else { vis.push({ store_id: storeId, dept_id: deptId, is_active: true }); }
+        if (cell) cell.innerHTML = `<span style="color:${wasOn ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${wasOn ? '☑' : '☐'}</span>`;
+        App.toast(resp.message || 'Error', 'error');
+      }
+    } catch (e) {
+      // Rollback on network error
+      if (newOn) { const ri = vis.findIndex(v => v.store_id === storeId && v.dept_id === deptId); if (ri >= 0) vis.splice(ri, 1); }
+      else { vis.push({ store_id: storeId, dept_id: deptId, is_active: true }); }
+      if (cell) cell.innerHTML = `<span style="color:${wasOn ? 'var(--green)' : 'var(--t4)'};font-size:14px;cursor:pointer">${wasOn ? '☑' : '☐'}</span>`;
+      App.toast('Network error', 'error');
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // USER ACCESS MATRIX (Phase 8)
+  // ═══════════════════════════════════════════
+
+  let _accessData = null; // { functions: [], tiers: [], permissions: {} }
+
+  function renderAccess() {
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">User Access</div></div>
+      <div class="content" id="accessContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillAccess() {
+    const el = document.getElementById('accessContent');
+    if (!el) return;
+    if (!_accessData) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔐</div><div class="empty-title">กำลังโหลด...</div></div>'; return; }
+
+    const { functions: fns, tiers, permissions: perms } = _accessData;
+    if (!fns.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔐</div><div class="empty-title">ไม่มีข้อมูล Functions</div></div>'; return; }
+
+    // Group by section
+    const sections = {};
+    const secOrder = [];
+    fns.forEach(f => {
+      if (!sections[f.section]) { sections[f.section] = []; secOrder.push(f.section); }
+      sections[f.section].push(f);
+    });
+
+    // Table header
+    const thTiers = tiers.map(t => `<th class="acc-th-tier">${t}</th>`).join('');
+
+    // Table rows
+    let rows = '';
+    secOrder.forEach(sec => {
+      rows += `<tr><td colspan="${tiers.length + 1}" class="acc-sec-hd">${App.esc(sec)} (${sections[sec].length})</td></tr>`;
+      sections[sec].forEach(f => {
+        const cells = tiers.map(t => {
+          const key = f.function_id + '|' + t;
+          const on = perms[key] === true;
+          return `<td class="acc-cell" id="ac-${f.function_id}-${t}" onclick="Scr3.togglePerm('${f.function_id}','${t}')">
+            <div class="acc-toggle${on ? ' acc-on' : ''}">${on ? '✅' : '—'}</div>
+          </td>`;
+        }).join('');
+        rows += `<tr><td class="acc-fn-name"><span class="acc-fn-label">${App.esc(f.function_name)}</span><span class="acc-fn-id">${App.esc(f.function_id)}</span></td>${cells}</tr>`;
+      });
+    });
+
+    const counter = `<div style="font-size:9px;color:var(--t3);margin-bottom:6px">${fns.length} functions × ${tiers.length} tiers — Tap to toggle (T1/T2 only)</div>`;
+
+    el.innerHTML = `<div style="max-width:1100px;margin:0 auto">${counter}
+      <div style="background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd);overflow-x:auto">
+        <table class="acc-tbl"><thead><tr><th style="min-width:180px;text-align:left">Function</th>${thTiers}</tr></thead><tbody>${rows}</tbody></table>
+      </div>
+    </div>`;
+  }
+
+  // ─── Set access data from loader ───
+  function setAccessData(data) { _accessData = data; }
+
+  // ─── Optimistic toggle permission ───
+  async function togglePerm(functionId, tierId) {
+    if (!_accessData) return;
+    const key = functionId + '|' + tierId;
+    const wasOn = _accessData.permissions[key] === true;
+    const newOn = !wasOn;
+
+    // Optimistic UI
+    _accessData.permissions[key] = newOn;
+    const cell = document.getElementById('ac-' + functionId + '-' + tierId);
+    if (cell) {
+      const inner = cell.querySelector('.acc-toggle');
+      if (inner) { inner.className = 'acc-toggle' + (newOn ? ' acc-on' : ''); inner.textContent = newOn ? '✅' : '—'; }
+    }
+
+    // Sync DB
+    try {
+      const resp = await API.togglePermission({ function_id: functionId, tier_id: tierId, allowed: newOn });
+      if (!resp.success) {
+        // Rollback
+        _accessData.permissions[key] = wasOn;
+        if (cell) {
+          const inner = cell.querySelector('.acc-toggle');
+          if (inner) { inner.className = 'acc-toggle' + (wasOn ? ' acc-on' : ''); inner.textContent = wasOn ? '✅' : '—'; }
+        }
+        App.toast(resp.message || 'Error', 'error');
+      }
+    } catch (e) {
+      _accessData.permissions[key] = wasOn;
+      if (cell) {
+        const inner = cell.querySelector('.acc-toggle');
+        if (inner) { inner.className = 'acc-toggle' + (wasOn ? ' acc-on' : ''); inner.textContent = wasOn ? '✅' : '—'; }
+      }
+      App.toast('Network error', 'error');
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // PLACEHOLDERS (Phase 9-10)
+  // ═══════════════════════════════════════════
+
   function renderWasteDashboard() { return placeholder('Waste Dashboard', '📊'); }
   function fillWasteDashboard()   {}
   function renderTopProducts()    { return placeholder('Top Products', '🏆'); }
@@ -228,8 +441,8 @@ const Scr3 = (() => {
   return {
     renderConfig, fillConfig, editConfig, saveConfig,
     renderDeptMapping, fillDeptMapping, editDeptMapping, saveDeptMapping,
-    renderVisibility, fillVisibility,
-    renderAccess, fillAccess,
+    renderVisibility, fillVisibility, setVisSection, filterVis, toggleVis,
+    renderAccess, fillAccess, setAccessData, togglePerm,
     renderWasteDashboard, fillWasteDashboard,
     renderTopProducts, fillTopProducts,
     renderCutoff, fillCutoff,
