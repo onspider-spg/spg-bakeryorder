@@ -1,9 +1,9 @@
 /**
- * Version 1.3 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.4 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Phase 4: Print Centre (Production Sheet + Delivery Slip)
+ * Phase 5: Incoming Returns (Receive / Rework / Waste)
  * ═══════════════════════════════════════════
  */
 
@@ -504,12 +504,240 @@ const Scr2 = (() => {
   function setSlipStore(sid) { _slipStore = sid; fillPrint(); }
   function setPrintDate(val) { _printDate = val; App.loadPrintCentre(val); }
 
-  // ═══ PLACEHOLDER SCREENS (Phase 5+) ═══
+  // ═══ BC INCOMING RETURNS ═══
+  let _retDateFrom = '';
+  let _retDateTo = '';
+  let _retFilter = 'all';
+  let _retShowCount = 5;
+
+  function renderBCReturns() {
+    const y = App.sydneyNow(); y.setDate(y.getDate() - 3);
+    const t = App.sydneyNow(); t.setDate(t.getDate() + 1);
+    _retDateFrom = App.fmtDate(y);
+    _retDateTo = App.fmtDate(t);
+    _retFilter = 'all';
+    _retShowCount = 5;
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">\u2190</button><div class="toolbar-title">Incoming Returns</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">\uD83D\uDCC5 Date:</span>
+        <input type="date" class="date-inp" value="${_retDateFrom}" onchange="Scr2.setBCRetDate('from',this.value)">
+        <span style="color:var(--t4)">\u2192</span>
+        <input type="date" class="date-inp" value="${_retDateTo}" onchange="Scr2.setBCRetDate('to',this.value)">
+        <span class="date-link" onclick="Scr2.setBCRetPreset('3day')">3 \u0E27\u0E31\u0E19</span>
+        <span class="date-link" onclick="Scr2.setBCRetPreset('all')">\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14</span>
+      </div>
+      <div class="order-chips" id="bcRetChips"></div>
+      <div class="content" id="bcRetContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillBCReturns() {
+    const el = document.getElementById('bcRetContent');
+    const chipEl = document.getElementById('bcRetChips');
+    if (!el) return;
+
+    const all = App.S.returns || [];
+    // Date filter
+    let filtered = all;
+    if (_retDateFrom) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) >= _retDateFrom);
+    if (_retDateTo) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) <= _retDateTo);
+
+    // Count by status
+    const counts = { all: filtered.length, Reported: 0, Received: 0, Done: 0 };
+    filtered.forEach(r => {
+      if (r.status === 'Reported') counts.Reported++;
+      else if (r.status === 'Received') counts.Received++;
+      else counts.Done++;
+    });
+
+    // Chips
+    if (chipEl) {
+      chipEl.innerHTML = [
+        { k: 'all', l: '\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14', c: counts.all },
+        { k: 'Reported', l: 'Reported', c: counts.Reported },
+        { k: 'Received', l: 'Received', c: counts.Received },
+        { k: 'Done', l: 'Done', c: counts.Done },
+      ].map(f => `<div class="chip${_retFilter === f.k ? ' active' : ''}" onclick="Scr2.setBCRetFilter('${f.k}')">${f.l}${f.c ? ' (' + f.c + ')' : ''}</div>`).join('');
+    }
+
+    // Apply filter
+    let shown = filtered;
+    if (_retFilter === 'Reported') shown = filtered.filter(r => r.status === 'Reported');
+    else if (_retFilter === 'Received') shown = filtered.filter(r => r.status === 'Received');
+    else if (_retFilter === 'Done') shown = filtered.filter(r => !['Reported', 'Received'].includes(r.status));
+
+    if (!shown.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">\u21A9\uFE0F</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E21\u0E35 Return</div></div>';
+      return;
+    }
+
+    const visible = shown.slice(0, _retShowCount);
+    const hasMore = shown.length > _retShowCount;
+
+    el.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${shown.length} records</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${visible.map(r => renderBCRetCard(r)).join('')}</div>
+      ${hasMore ? `<div class="load-more" onclick="Scr2.showMoreBCRet()">\u0E41\u0E2A\u0E14\u0E07 ${_retShowCount} \u0E08\u0E32\u0E01 ${shown.length} \u00B7 \u0E42\u0E2B\u0E25\u0E14\u0E40\u0E1E\u0E34\u0E48\u0E21 5 \u2193</div>` : ''}`;
+  }
+
+  function renderBCRetCard(r) {
+    const borderColor = { Reported: 'var(--orange)', Received: 'var(--blue)', Reworked: 'var(--green)', Wasted: 'var(--red)' }[r.status] || 'var(--bd)';
+    const stsStyle = {
+      Reported: 'background:#fffbeb;color:#92400e',
+      Received: 'background:var(--blue-bg);color:#1e40af',
+      Reworked: 'background:var(--green-bg);color:#065f46',
+      Wasted:   'background:var(--red-bg);color:var(--red)',
+    }[r.status] || '';
+    const isDone = !['Reported', 'Received'].includes(r.status);
+    const store = App.getStoreName(r.store_id) || r.store_id;
+    const dateStr = App.fmtDateAU((r.created_at || '').substring(0, 10));
+
+    let actions = '';
+    if (r.status === 'Reported') {
+      actions = `<div style="display:flex;gap:4px;margin-top:6px">
+        <button class="btn" style="background:var(--blue);color:#fff;padding:4px 12px;font-size:11px" onclick="Scr2.doReceive('${r.return_id}')">\uD83D\uDCE5 Receive</button>
+        <button class="btn btn-outline" style="padding:4px 12px;font-size:11px" onclick="Scr2.showBCRetDetail('${r.return_id}')">\uD83D\uDC41\uFE0F Detail</button>
+      </div>`;
+    } else if (r.status === 'Received') {
+      actions = `<div style="display:flex;gap:4px;margin-top:6px">
+        <button class="btn btn-green" style="padding:4px 12px;font-size:11px" onclick="Scr2.doResolve('${r.return_id}','rework')">\u267B\uFE0F Rework</button>
+        <button class="btn btn-danger" style="padding:4px 12px;font-size:11px" onclick="Scr2.doResolve('${r.return_id}','waste')">\uD83D\uDDD1\uFE0F Waste</button>
+        <button class="btn btn-outline" style="padding:4px 12px;font-size:11px" onclick="Scr2.showBCRetDetail('${r.return_id}')">\uD83D\uDC41\uFE0F</button>
+      </div>`;
+    }
+
+    return `<div style="padding:10px 12px;border:1px solid var(--bd2);border-left:3px solid ${borderColor};border-radius:0 var(--rd) var(--rd) 0;background:var(--bg)${isDone ? ';opacity:.6' : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:700;color:${isDone ? 'var(--t3)' : 'var(--acc)'}">${App.esc(r.return_id)}</span>
+        <span class="sts" style="${stsStyle}">${r.status}</span>
+      </div>
+      <div style="font-size:12px;font-weight:600">${App.esc(r.product_name)} \u00D7${r.quantity} ${App.esc(r.unit)}</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:2px">${App.esc(store)} \u00B7 ${App.esc(r.issue_type)} \u00B7 ${dateStr}</div>
+      ${isDone ? '<div style="font-size:10px;color:var(--t3);margin-top:2px">\u2705 done</div>' : ''}
+      ${actions}
+    </div>`;
+  }
+
+  async function doReceive(returnId) {
+    try {
+      const resp = await API.receiveReturn({ return_id: returnId });
+      if (resp.success) {
+        App.toast(resp.message || '\u2705 Receive \u0E40\u0E23\u0E35\u0E22\u0E1A\u0E23\u0E49\u0E2D\u0E22', 'success');
+        const r = App.S.returns.find(x => x.return_id === returnId);
+        if (r) r.status = 'Received';
+        fillBCReturns();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+    }
+  }
+
+  async function doResolve(returnId, resolution) {
+    try {
+      const resp = await API.resolveReturn({ return_id: returnId, resolution });
+      if (resp.success) {
+        App.toast(resp.message || '\u2705 \u0E40\u0E23\u0E35\u0E22\u0E1A\u0E23\u0E49\u0E2D\u0E22', 'success');
+        const r = App.S.returns.find(x => x.return_id === returnId);
+        if (r) r.status = resolution === 'rework' ? 'Reworked' : 'Wasted';
+        if (resolution === 'waste') App.S._wasteLoaded = false; // invalidate waste
+        fillBCReturns();
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+    }
+  }
+
+  function showBCRetDetail(returnId) {
+    const r = App.S.returns.find(x => x.return_id === returnId);
+    if (!r) return;
+
+    const stsStyle = {
+      Reported: 'background:#fffbeb;color:#92400e',
+      Received: 'background:var(--blue-bg);color:#1e40af',
+      Reworked: 'background:var(--green-bg);color:#065f46',
+      Wasted:   'background:var(--red-bg);color:var(--red)',
+    }[r.status] || '';
+
+    // Timeline
+    const reportDate = App.fmtDateAU((r.created_at || '').substring(0, 10));
+    let timeline = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div>
+      <span style="font-size:12px"><b>Reported</b> \u2014 ${App.esc(r.reported_by_name)} \u00B7 ${reportDate}</span>
+    </div>`;
+
+    if (['Received', 'Reworked', 'Wasted'].includes(r.status)) {
+      const recDate = r.received_at ? App.fmtDateAU(r.received_at.substring(0, 10)) : '';
+      timeline += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--blue)"></div>
+        <span style="font-size:12px"><b>Received</b> \u00B7 ${recDate}</span>
+      </div>`;
+    }
+    if (['Reworked', 'Wasted'].includes(r.status)) {
+      const resDate = r.resolved_at ? App.fmtDateAU(r.resolved_at.substring(0, 10)) : '';
+      const resColor = r.status === 'Reworked' ? 'var(--green)' : 'var(--red)';
+      timeline += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${resColor}"></div>
+        <span style="font-size:12px"><b>${r.status}</b> ${r.resolved_by_name ? '\u2014 ' + App.esc(r.resolved_by_name) : ''} \u00B7 ${resDate}</span>
+      </div>`;
+    }
+    if (r.status === 'Reported') {
+      timeline += `<div style="display:flex;gap:8px;align-items:center;color:var(--t4)">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--bd);border:1px dashed var(--t4)"></div>
+        <span style="font-size:12px">Waiting for BC...</span>
+      </div>`;
+    }
+    if (r.status === 'Received') {
+      timeline += `<div style="display:flex;gap:8px;align-items:center;color:var(--t4)">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--bd);border:1px dashed var(--t4)"></div>
+        <span style="font-size:12px">Waiting resolve...</span>
+      </div>`;
+    }
+
+    // Action buttons
+    let actionBtns = '';
+    if (r.status === 'Reported') {
+      actionBtns = `<button class="btn" style="background:var(--blue);color:#fff;flex:1" onclick="App.closeDialog();Scr2.doReceive('${r.return_id}')">\uD83D\uDCE5 Receive</button>`;
+    } else if (r.status === 'Received') {
+      actionBtns = `<button class="btn btn-green" style="flex:1" onclick="App.closeDialog();Scr2.doResolve('${r.return_id}','rework')">\u267B\uFE0F Rework</button>
+        <button class="btn btn-danger" style="flex:1" onclick="App.closeDialog();Scr2.doResolve('${r.return_id}','waste')">\uD83D\uDDD1\uFE0F Waste</button>`;
+    }
+
+    App.showDialog(`<div class="popup-sheet" style="width:420px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:700">\u21A9\uFE0F ${App.esc(r.return_id)}</div>
+        <span class="sts" style="${stsStyle}">${r.status}</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">${App.esc(r.product_name)} \u00B7 ${r.quantity} ${App.esc(r.unit)}</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.6">
+        ${App.esc(r.issue_type)}${r.description ? ' \u00B7 ' + App.esc(r.description) : ''}<br>
+        \uD83D\uDCE6 ${App.esc(r.action === 'return_to_bakery' ? 'Return to BC' : 'Discard at store')}<br>
+        ${r.production_date ? 'Production: ' + App.fmtDateThai(r.production_date) : ''}
+      </div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:6px">\uD83D\uDCCA Timeline</div>
+      <div style="margin-bottom:14px">${timeline}</div>
+      <div style="display:flex;gap:8px">
+        ${actionBtns}
+        <button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">\u2190 Close</button>
+      </div>
+    </div>`);
+  }
+
+  function setBCRetDate(which, val) { if (which === 'from') _retDateFrom = val; else _retDateTo = val; fillBCReturns(); }
+  function setBCRetPreset(p) {
+    if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 3); _retDateFrom = App.fmtDate(y); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _retDateTo = App.fmtDate(t); }
+    else { _retDateFrom = ''; _retDateTo = ''; }
+    fillBCReturns();
+  }
+  function setBCRetFilter(f) { _retFilter = f; _retShowCount = 5; fillBCReturns(); }
+  function showMoreBCRet() { _retShowCount += 5; fillBCReturns(); }
+
+  // ═══ PLACEHOLDER SCREENS (Phase 6+) ═══
   function renderPlaceholder(title) {
     return `<div class="content"><div class="empty"><div class="empty-icon">\uD83D\uDEA7</div><div class="empty-title">${App.esc(title)}</div><div class="empty-desc">Coming in next update</div></div></div>`;
   }
 
-  function renderBCReturns() { return renderPlaceholder('Incoming Returns'); }
   function renderProducts()  { return renderPlaceholder('Manage Products'); }
   function renderProdEdit()  { return renderPlaceholder('Edit Product'); }
 
@@ -519,6 +747,8 @@ const Scr2 = (() => {
     renderFulfil, fillFulfil, fulfilFull, fulfilPartial, setFulfilQty, setFulfilNote,
     saveFulfilment, doMarkDelivered,
     renderPrint, fillPrint, setPrintTab, setPrintSection, setSlipStore, setPrintDate,
-    renderBCReturns, renderProducts, renderProdEdit,
+    renderBCReturns, fillBCReturns, doReceive, doResolve, showBCRetDetail,
+    setBCRetDate, setBCRetPreset, setBCRetFilter, showMoreBCRet,
+    renderProducts, renderProdEdit,
   };
 })();

@@ -1,9 +1,9 @@
 /**
- * Version 1.4 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Phase 4: get_production_sheet
+ * Phase 5: receive_return + resolve_return
  * ═══════════════════════════════════════════
  */
 
@@ -88,6 +88,8 @@ const API = (() => {
     deleteWaste:    (b)         => post('delete_waste', b),
     reportReturn:   (b)         => post('report_return', b),
     editReturn:     (b)         => post('edit_return', b),
+    receiveReturn:  (b)         => post('receive_return', b),
+    resolveReturn:  (b)         => post('resolve_return', b),
     saveQuotas:     (b)         => post('save_quotas', b),
   };
 })();
