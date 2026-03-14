@@ -1,9 +1,9 @@
 /**
- * Version 1.5 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Phase 5: receive_return + resolve_return
+ * Phase 6: get_all_products + save_product
  * ═══════════════════════════════════════════
  */
 
@@ -91,5 +91,7 @@ const API = (() => {
     receiveReturn:  (b)         => post('receive_return', b),
     resolveReturn:  (b)         => post('resolve_return', b),
     saveQuotas:     (b)         => post('save_quotas', b),
+    getAllProducts:  ()          => get('get_all_products'),
+    saveProduct:    (b)         => post('save_product', b),
   };
 })();

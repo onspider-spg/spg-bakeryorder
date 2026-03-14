@@ -1,9 +1,9 @@
 /**
- * Version 1.4 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Phase 5: Incoming Returns (Receive / Rework / Waste)
+ * Phase 6: Manage Products + Edit + Visibility
  * ═══════════════════════════════════════════
  */
 
@@ -733,13 +733,190 @@ const Scr2 = (() => {
   function setBCRetFilter(f) { _retFilter = f; _retShowCount = 5; fillBCReturns(); }
   function showMoreBCRet() { _retShowCount += 5; fillBCReturns(); }
 
-  // ═══ PLACEHOLDER SCREENS (Phase 6+) ═══
-  function renderPlaceholder(title) {
-    return `<div class="content"><div class="empty"><div class="empty-icon">\uD83D\uDEA7</div><div class="empty-title">${App.esc(title)}</div><div class="empty-desc">Coming in next update</div></div></div>`;
+  // ═══ MANAGE PRODUCTS ═══
+  let _prodTab = 'active'; // 'active' | 'inactive'
+  let _prodSearch = '';
+  let _prodSectionFilter = 'all';
+
+  function renderProducts() {
+    _prodTab = 'active'; _prodSearch = ''; _prodSectionFilter = 'all';
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">\u2190</button><div class="toolbar-title">Manage Products</div></div>
+      <div class="content" id="prodListContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
   }
 
-  function renderProducts()  { return renderPlaceholder('Manage Products'); }
-  function renderProdEdit()  { return renderPlaceholder('Edit Product'); }
+  function fillProducts() {
+    const el = document.getElementById('prodListContent');
+    if (!el) return;
+    const prods = App.S.adminProducts;
+    if (!prods) { el.innerHTML = '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E01\u0E33\u0E25\u0E31\u0E07\u0E42\u0E2B\u0E25\u0E14...</div></div>'; return; }
+
+    const active = prods.filter(p => p.is_active);
+    const inactive = prods.filter(p => !p.is_active);
+    const list = _prodTab === 'active' ? active : inactive;
+
+    // Sections from products
+    const secs = new Set();
+    list.forEach(p => { if (p.section_id) secs.add(p.section_id); });
+    const sortedSecs = [...secs].sort();
+
+    // Filter
+    let filtered = list;
+    if (_prodSectionFilter !== 'all') filtered = filtered.filter(p => p.section_id === _prodSectionFilter);
+    if (_prodSearch) { const s = _prodSearch.toLowerCase(); filtered = filtered.filter(p => (p.product_name || '').toLowerCase().includes(s)); }
+
+    const tabs = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <div class="chip${_prodTab === 'active' ? ' active' : ''}" onclick="Scr2.setProdTab('active')">Active (${active.length})</div>
+      <div class="chip${_prodTab === 'inactive' ? ' active' : ''}" onclick="Scr2.setProdTab('inactive')">Inactive (${inactive.length})</div>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary" style="padding:6px 16px;font-size:12px" onclick="App.go('prod-edit',{id:'new'})">+ Add</button>
+    </div>`;
+
+    const search = `<input class="search-input" style="max-width:400px;margin-bottom:8px" placeholder="\uD83D\uDD0D Search products..." value="${App.esc(_prodSearch)}" oninput="Scr2.filterProds(this.value)">`;
+
+    const secChips = `<div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+      <div class="chip${_prodSectionFilter === 'all' ? ' active' : ''}" onclick="Scr2.setProdSection('all')">All</div>
+      ${sortedSecs.map(s => `<div class="chip${_prodSectionFilter === s ? ' active' : ''}" onclick="Scr2.setProdSection('${s}')">${App.esc(s)}</div>`).join('')}
+    </div>`;
+
+    const sortNote = `<div style="font-size:10px;color:var(--t4);margin-bottom:10px">Sort: A-Z by product name \u00B7 ${filtered.length} items</div>`;
+
+    let cards = '';
+    if (!filtered.length) {
+      cards = '<div class="empty"><div class="empty-icon">\uD83D\uDD0D</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32</div></div>';
+    } else {
+      cards = '<div style="display:flex;flex-direction:column;gap:4px">' + filtered.map(p => {
+        const catName = (App.S.categories.find(c => c.cat_id === p.category_id) || {}).cat_name || p.category_id;
+        const stsBg = p.is_active ? 'background:var(--green-bg);color:var(--green)' : 'background:var(--bg3);color:var(--t3)';
+        return `<div style="padding:12px;border:1px solid var(--bd2);border-radius:var(--rd);background:var(--bg);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="App.go('prod-edit',{id:'${p.product_id}'})">
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">${App.esc(p.product_name)}</div><div style="font-size:10px;color:var(--t3)">${App.esc(catName)} \u00B7 ${App.esc(p.section_id)} \u00B7 ${App.esc(p.unit)} \u00B7 Min ${p.min_order || 1}</div></div>
+          <span class="sts" style="${stsBg}">${p.is_active ? 'Active' : 'Hidden'}</span>
+          <span>\u270F\uFE0F</span>
+        </div>`;
+      }).join('') + '</div>';
+    }
+
+    el.innerHTML = tabs + search + secChips + sortNote + cards;
+  }
+
+  function setProdTab(tab) { _prodTab = tab; _prodSectionFilter = 'all'; fillProducts(); }
+  function filterProds(val) { _prodSearch = val; fillProducts(); }
+  function setProdSection(sec) { _prodSectionFilter = sec; fillProducts(); }
+
+  // ═══ PRODUCT EDIT ═══
+  function renderProdEdit(params) {
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('products')">\u2190</button><div class="toolbar-title">Edit Product</div></div>
+      <div class="content" id="prodEditContent"><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillProdEdit(productId) {
+    const el = document.getElementById('prodEditContent');
+    if (!el) return;
+
+    const isNew = !productId || productId === 'new';
+    const p = isNew ? {} : (App.S.adminProducts || []).find(x => x.product_id === productId);
+    if (!isNew && !p) { el.innerHTML = '<div class="empty"><div class="empty-icon">\u274C</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32</div></div>'; return; }
+
+    const cats = App.S.categories || [];
+    const catOpts = cats.map(c => `<option value="${c.cat_id}"${c.cat_id === (p.category_id || '') ? ' selected' : ''}>${App.esc(c.cat_name)}</option>`).join('');
+
+    // Sections from categories
+    const secs = [...new Set(cats.map(c => c.section_id).filter(Boolean))].sort();
+    const secOpts = secs.map(s => `<option value="${s}"${s === (p.section_id || '') ? ' selected' : ''}>${App.esc(s)}</option>`).join('');
+
+    // Visibility
+    const channels = App.S.adminChannels || [];
+    const vis = p.visibility || [];
+    const visSet = new Set(vis.map(v => v.store_id + '|' + v.dept_id));
+
+    const visRows = channels.map(ch => {
+      const key = ch.store_id + '|' + ch.dept_id;
+      const checked = visSet.has(key);
+      return `<div style="display:flex;justify-content:space-between;padding:5px 8px;background:var(--bg);border:1px solid var(--bd2);border-radius:4px">
+        <span style="font-size:10px;font-weight:600">${App.esc(App.getStoreName(ch.store_id))} \u00B7 ${App.esc(ch.dept_id)}</span>
+        <input type="checkbox" class="vis-cb" data-store="${ch.store_id}" data-dept="${ch.dept_id}"${checked ? ' checked' : ''}>
+      </div>`;
+    }).join('');
+
+    const isActive = p.is_active !== false;
+
+    el.innerHTML = `<div style="max-width:500px;margin:0 auto">
+      <div style="font-size:15px;font-weight:700;margin-bottom:14px">${isNew ? '\u2795 Add Product' : '\u270F\uFE0F ' + App.esc(p.product_name)}</div>
+      <div class="fg"><label class="lb">\u2776 Product Name *</label><input class="inp" id="peNameInput" value="${App.esc(p.product_name || '')}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="fg"><label class="lb">\u2777 Category *</label><select class="sel" id="peCatInput"><option value="">-- select --</option>${catOpts}</select></div>
+        <div class="fg"><label class="lb">\u2778 Section *</label><select class="sel" id="peSecInput"><option value="">-- select --</option>${secOpts}</select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div class="fg"><label class="lb">\u2779 Unit</label><select class="sel" id="peUnitInput"><option value="pcs"${(p.unit || 'pcs') === 'pcs' ? ' selected' : ''}>pcs</option><option value="btl"${'btl' === p.unit ? ' selected' : ''}>btl</option><option value="pack"${'pack' === p.unit ? ' selected' : ''}>pack</option><option value="kg"${'kg' === p.unit ? ' selected' : ''}>kg</option><option value="box"${'box' === p.unit ? ' selected' : ''}>box</option></select></div>
+        <div class="fg"><label class="lb">\u277A Min Order</label><input class="inp" type="number" id="peMinInput" value="${p.min_order || 1}" min="1"></div>
+        <div class="fg"><label class="lb">\u277B Step</label><input class="inp" type="number" id="peStepInput" value="${p.order_step || 1}" min="1"></div>
+      </div>
+      <div class="fg"><label class="lb">\u277C Image URL</label><input class="inp" id="peImgInput" placeholder="https://..." value="${App.esc(p.image_url || '')}"></div>
+      <div class="fg"><label class="lb">Status</label><div style="display:flex;gap:8px">
+        <div class="chip${isActive ? ' active' : ''}" id="peStsActive" onclick="document.getElementById('peStsActive').classList.add('active');document.getElementById('peStsHidden').classList.remove('active')">Active</div>
+        <div class="chip${!isActive ? ' active' : ''}" id="peStsHidden" onclick="document.getElementById('peStsHidden').classList.add('active');document.getElementById('peStsActive').classList.remove('active')">Hidden</div>
+      </div></div>
+      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;margin:14px 0 6px">\uD83D\uDC41\uFE0F Store Visibility</div>
+      <div style="font-size:10px;color:var(--t4);margin-bottom:6px">Select stores that can order this product</div>
+      <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:8px">${visRows}</div>
+      <div style="display:flex;gap:8px;font-size:10px;margin-bottom:14px">
+        <span style="color:var(--blue);cursor:pointer" onclick="document.querySelectorAll('.vis-cb').forEach(c=>c.checked=true)">\u2705 Select all</span>
+        <span style="color:var(--red);cursor:pointer" onclick="document.querySelectorAll('.vis-cb').forEach(c=>c.checked=false)">\u274C Deselect all</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" style="flex:1" onclick="App.go('products')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" id="peSaveBtn" onclick="Scr2.saveProduct('${isNew ? '' : p.product_id}')">\uD83D\uDCBE Save</button>
+      </div>
+    </div>`;
+  }
+
+  async function saveProduct(productId) {
+    const btn = document.getElementById('peSaveBtn');
+    if (!btn || btn.disabled) return;
+
+    const name = document.getElementById('peNameInput')?.value?.trim();
+    const catId = document.getElementById('peCatInput')?.value;
+    const secId = document.getElementById('peSecInput')?.value;
+    const unit = document.getElementById('peUnitInput')?.value || 'pcs';
+    const minOrder = parseInt(document.getElementById('peMinInput')?.value) || 1;
+    const step = parseInt(document.getElementById('peStepInput')?.value) || 1;
+    const imgUrl = document.getElementById('peImgInput')?.value?.trim() || '';
+    const isActive = document.getElementById('peStsActive')?.classList.contains('active');
+
+    if (!name) { App.toast('\u0E01\u0E23\u0E38\u0E13\u0E32\u0E43\u0E2A\u0E48\u0E0A\u0E37\u0E48\u0E2D\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32', 'error'); return; }
+    if (!catId) { App.toast('\u0E40\u0E25\u0E37\u0E2D\u0E01 Category', 'error'); return; }
+    if (!secId) { App.toast('\u0E40\u0E25\u0E37\u0E2D\u0E01 Section', 'error'); return; }
+
+    // Collect visibility
+    const visibility = [];
+    document.querySelectorAll('.vis-cb:checked').forEach(cb => {
+      visibility.push({ store_id: cb.dataset.store, dept_id: cb.dataset.dept });
+    });
+
+    btn.disabled = true; btn.textContent = '\u0E01\u0E33\u0E25\u0E31\u0E07\u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01...';
+    try {
+      const resp = await API.saveProduct({
+        product_id: productId || undefined,
+        product_name: name, category_id: catId, section_id: secId,
+        unit, min_order: minOrder, order_step: step,
+        image_url: imgUrl, is_active: isActive, visibility,
+      });
+      if (resp.success) {
+        App.toast(resp.message || '\u2705 \u0E1A\u0E31\u0E19\u0E17\u0E36\u0E01\u0E40\u0E23\u0E35\u0E22\u0E1A\u0E23\u0E49\u0E2D\u0E22', 'success');
+        // Invalidate caches
+        App.S.adminProducts = null;
+        App.S._prodsLoaded = false;
+        API.cache.clear();
+        App.go('products');
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = '\uD83D\uDCBE Save';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = '\uD83D\uDCBE Save';
+    }
+  }
 
   return {
     renderBCDashboard, fillBCDashboard,
@@ -749,6 +926,7 @@ const Scr2 = (() => {
     renderPrint, fillPrint, setPrintTab, setPrintSection, setSlipStore, setPrintDate,
     renderBCReturns, fillBCReturns, doReceive, doResolve, showBCRetDetail,
     setBCRetDate, setBCRetPreset, setBCRetFilter, showMoreBCRet,
-    renderProducts, renderProdEdit,
+    renderProducts, fillProducts, setProdTab, filterProds, setProdSection,
+    renderProdEdit, fillProdEdit, saveProduct,
   };
 })();

@@ -1,9 +1,9 @@
 /**
- * Version 1.7.4 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.8 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Phase 5: BC Returns route + loadBCReturns
+ * Phase 6: Manage Products route + loadProducts
  * ═══════════════════════════════════════════
  */
 
@@ -20,6 +20,7 @@ const App = (() => {
     wasteLog: [],    _wasteLoaded: false, _wasteLoading: false,
     returns: [],     _retsLoaded: false,  _retsLoading: false,
     notifications: [], dashboard: {}, printData: null,
+    adminProducts: null, adminChannels: null,
     // Quotas
     quotas: {},       _quotasDay: -1,
     quotaMap: {},     // full 7-day map for quota screen
@@ -56,8 +57,8 @@ const App = (() => {
     'fulfil':        { render: (p) => Scr2.renderFulfil(p), title: 'Fulfilment',   onLoad: (p) => loadFulfilOrder(p.id) },
     'print':         { render: () => Scr2.renderPrint(),        title: 'Print Centre', onLoad: () => loadPrintCentre() },
     'bc-returns':    { render: () => Scr2.renderBCReturns(),    title: 'Incoming Returns', onLoad: () => loadBCReturnsData() },
-    'products':      { render: () => Scr2.renderProducts(),     title: 'Manage Products' },
-    'prod-edit':     { render: (p) => Scr2.renderProdEdit(p),   title: 'Edit Product' },
+    'products':      { render: () => Scr2.renderProducts(),     title: 'Manage Products', onLoad: () => loadAdminProducts() },
+    'prod-edit':     { render: (p) => Scr2.renderProdEdit(p),   title: 'Edit Product',    onLoad: (p) => loadProdEdit(p.id) },
   };
 
   // ─── NAVIGATE ───
@@ -311,6 +312,28 @@ const App = (() => {
     Scr2.fillBCReturns();
   }
 
+  async function loadAdminProducts() {
+    try {
+      const resp = await API.getAllProducts();
+      if (resp.success) {
+        S.adminProducts = resp.data.products;
+        S.adminChannels = resp.data.channels;
+        // Also update categories if fresher
+        if (resp.data.categories?.length) {
+          S.categories = resp.data.categories.map(c => ({ cat_id: c.category_id, cat_name: c.category_name, section_id: c.section_id }));
+        }
+        Scr2.fillProducts();
+      }
+    } catch (e) {
+      toast('Network error', 'error');
+    }
+  }
+
+  function loadProdEdit(productId) {
+    // Data already in S.adminProducts from products screen — just fill
+    Scr2.fillProdEdit(productId);
+  }
+
   async function loadQuotaScreen() {
     await ensureProducts();
     // Full 7-day quota map
@@ -479,7 +502,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.7.4 | 14 Mar 2026</div>
+      <div class="sd-version">v1.8 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -540,7 +563,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.7.4/div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.8/div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -648,7 +671,8 @@ const App = (() => {
     openSidebar, closeSidebar, toggleSidebar,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,
-    loadBCDashboard, loadPrintCentre, loadBCReturnsData, getStoreName, getDeptName,
+    loadBCDashboard, loadPrintCentre, loadBCReturnsData, loadAdminProducts, loadProdEdit,
+    getStoreName, getDeptName,
     sydneyNow, fmtDate, todaySydney, tomorrowSydney, fmtDateThai, fmtDateAU,
   };
 })();
