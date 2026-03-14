@@ -1,5 +1,5 @@
 /**
- * Version 1.6.5 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.6.6 | 14 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -151,7 +151,7 @@ const App = (() => {
   async function loadBrowseData() {
     // Categories: already in memory from init_lite — no fetch needed
 
-    // Products + Stock + Quotas: 1 bundled call (or memory if loaded)
+    // Products + Stock + Quotas
     const d = new Date(S.deliveryDate + 'T00:00:00');
     const dow = d.getDay();
 
@@ -161,12 +161,23 @@ const App = (() => {
       return;
     }
 
-    // Try products from cache (quotas still need API for day-specific)
+    // Try products from cache
     if (!S._prodsLoaded) {
       const cached = API.cache.get('prods');
       if (cached) { S.products = cached; S._prodsLoaded = true; }
     }
 
+    // Products already loaded → fetch only quotas for new day
+    if (S._prodsLoaded && S._quotasDay !== dow) {
+      try {
+        const resp = await API.getQuotas({ day: String(dow) });
+        if (resp.success) { S.quotas = resp.data; S._quotasDay = dow; }
+      } catch {}
+      Scr.fillBrowse();
+      return;
+    }
+
+    // Products not loaded → full bundle (products + stock + quotas)
     if (S._prodsLoading) return;
     S._prodsLoading = true;
     try {
@@ -362,7 +373,7 @@ const App = (() => {
     ).join(''));
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v1.6.5 | 14 Mar 2026</div>
+      <div class="sd-version">v1.6.6 | 14 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -407,7 +418,7 @@ const App = (() => {
     html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
     if (hasPerm('fn_view_waste')) html += mobItem('waste', '▤', 'Waste Log');
     if (hasPerm('fn_view_returns')) html += mobItem('returns', '▤', 'Returns');
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.1</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v1.6.6</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
