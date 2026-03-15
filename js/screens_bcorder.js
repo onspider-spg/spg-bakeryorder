@@ -1,9 +1,10 @@
 /**
- * Version 1.5.9 | 15 MAR 2026 | Siam Palette Group
+ * Version 1.6.0 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: Debounced product search (250ms)
+ * Feature: Stock validation on submit (hard block if stock not filled)
+ * Fix: Stock "0" correctly saved as 0 (not null)
  * ═══════════════════════════════════════════
  */
 
@@ -253,8 +254,10 @@ const Scr = (() => {
   // ─── Stock input handlers: save to S.stockInputs + auto-suggest ───
   function onStock1(el, pid) {
     App.S.stockInputs[pid] = el.value;
+    const numVal = el.value !== '' ? parseFloat(el.value) : null;
+    const stockVal = (numVal !== null && !isNaN(numVal)) ? numVal : null;
     const cart = App.getCartItem(pid);
-    if (cart) App.setCartStock(pid, parseFloat(el.value) || null);
+    if (cart) App.setCartStock(pid, stockVal);
     autoSuggest(pid, parseFloat(el.value));
   }
 
@@ -266,10 +269,11 @@ const Scr = (() => {
     const n2 = parseFloat(v2) || 0;
     const sum = n1 + n2;
     const sumEl = document.getElementById('stkSum-' + pid);
-    if (sumEl) sumEl.textContent = (n1 || n2) ? sum : '—';
+    const hasValue = v1 !== '' || v2 !== '';
+    if (sumEl) sumEl.textContent = hasValue ? sum : '—';
     const cart = App.getCartItem(pid);
-    if (cart) App.setCartStock(pid, (n1 || n2) ? sum : null);
-    if (n1 || n2) autoSuggest(pid, sum);
+    if (cart) App.setCartStock(pid, hasValue ? sum : null);
+    if (hasValue) autoSuggest(pid, sum);
   }
 
   // ─── Auto-suggest: quota − stock → fill stepper (recalc if auto, skip if user set) ───
@@ -384,9 +388,40 @@ const Scr = (() => {
     App.go('cart'); // re-render cart
   }
 
+  // ─── Stock validation: all cart items must have stock filled ───
+  function validateStockBeforeSubmit() {
+    const missing = [];
+    const sp = App.getStockPoints();
+    App.S.cart.forEach(c => {
+      const si = App.S.stockInputs[c.product_id];
+      if (si === undefined || si === null) {
+        missing.push(c.product_name);
+        return;
+      }
+      if (sp === 2 && typeof si === 'object') {
+        // 2-point: at least one of s1/s2 must be filled
+        if (si.s1 === '' && si.s2 === '') missing.push(c.product_name);
+      } else {
+        // 1-point: must not be empty string
+        if (String(si) === '') missing.push(c.product_name);
+      }
+    });
+    return { valid: missing.length === 0, missing };
+  }
+
   async function submitOrder() {
     const btn = document.getElementById('submitBtn');
     if (!btn || btn.disabled) return;
+
+    // ── Stock validation (hard block) ──
+    const stockCheck = validateStockBeforeSubmit();
+    if (!stockCheck.valid) {
+      const n = stockCheck.missing.length;
+      const preview = stockCheck.missing.slice(0, 3).join(', ') + (n > 3 ? ' +' + (n - 3) + ' อื่น' : '');
+      App.toast('กรุณากรอกสต็อกก่อนส่ง (' + n + ' รายการ) — ' + preview, 'error');
+      return;
+    }
+
     btn.disabled = true;
     btn.textContent = 'กำลังส่ง...';
 
