@@ -1,9 +1,9 @@
 /**
- * Version 2.2.8 | 16 MAR 2026 | Siam Palette Group
+ * Version 2.2.9 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: Dashboard bundled in initLite (2→1 HTTP), Promise.all, DRY, debounce, esc cache
+ * Fix: enterEditMode restore stockInputs as {s1,s2} for 2-point stores
  * ═══════════════════════════════════════════
  */
 
@@ -515,6 +515,7 @@ const App = (() => {
     if (!data || data.order.order_id !== orderId) return;
     const o = data.order;
     const items = data.items || [];
+    const sp = getStockPoints(); // 1 or 2
 
     // Restore cart from order items
     S.cart = items.filter(i => i.qty_ordered > 0).map(i => ({
@@ -535,7 +536,13 @@ const App = (() => {
       const resp = await API.getStockHistory({ order_id: orderId });
       if (resp.success && resp.data) {
         resp.data.forEach(h => {
-          S.stockInputs[h.product_id] = String(h.stock_on_hand);
+          const val = h.stock_on_hand;
+          if (sp === 2) {
+            // DB stores combined total — restore to s1 (จุด 1), s2 empty
+            S.stockInputs[h.product_id] = { s1: String(val != null ? val : ''), s2: '' };
+          } else {
+            S.stockInputs[h.product_id] = String(val != null ? val : '');
+          }
         });
       }
     } catch (e) { console.error('Edit mode stock fetch:', e); }
@@ -543,7 +550,11 @@ const App = (() => {
     // Fallback: fill from order items if stock history missing
     items.forEach(i => {
       if (i.stock_on_hand != null && !S.stockInputs[i.product_id]) {
-        S.stockInputs[i.product_id] = String(i.stock_on_hand);
+        if (sp === 2) {
+          S.stockInputs[i.product_id] = { s1: String(i.stock_on_hand), s2: '' };
+        } else {
+          S.stockInputs[i.product_id] = String(i.stock_on_hand);
+        }
       }
     });
 
