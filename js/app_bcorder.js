@@ -1,5 +1,5 @@
 /**
- * Version 2.2.5 | 15 MAR 2026 | Siam Palette Group
+ * Version 2.2.6 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -19,6 +19,7 @@ const App = (() => {
     stock: [],       _stockLoaded: false, _stockLoading: false,
     wasteLog: [],    _wasteLoaded: false, _wasteLoading: false,
     returns: [],     _retsLoaded: false,  _retsLoading: false,
+    stockHistory: [], stockHistDateFrom: '', stockHistDateTo: '',
     notifications: [], dashboard: {}, _dashPreloaded: false, printData: null,
     adminProducts: null, adminChannels: null,
     // Quotas
@@ -58,6 +59,7 @@ const App = (() => {
     'quota':         { render: () => Scr.renderQuota(),         title: 'Set Quota',      onLoad: () => loadQuotaScreen() },
     'waste':         { render: () => Scr.renderWaste(),         title: 'Waste Log',      onLoad: () => loadWasteScreen() },
     'returns':       { render: () => Scr.renderReturns(),       title: 'Returns',        onLoad: () => loadReturnsScreen() },
+    'stock-history': { render: () => Scr.renderStockHistory(),  title: 'Stock History',  onLoad: () => loadStockHistory() },
     // BC-only routes (Phase 2+)
     'accept':        { render: (p) => Scr2.renderAccept(p), title: 'Accept Order', onLoad: (p) => loadAcceptOrder(p.id) },
     'fulfil':        { render: (p) => Scr2.renderFulfil(p), title: 'Fulfilment',   onLoad: (p) => loadFulfilOrder(p.id) },
@@ -83,7 +85,7 @@ const App = (() => {
     currentRoute = route;
     currentParams = params;
 
-    const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns','accept','fulfil','print','bc-returns','products','prod-edit',
+    const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns','stock-history','accept','fulfil','print','bc-returns','products','prod-edit',
       'visibility','access','dept-mapping','config','waste-dashboard','top-products','cutoff','audit'];
     if (authScreens.includes(route) && S.session) {
       if (!_shellMounted) mountShell();
@@ -359,6 +361,17 @@ const App = (() => {
     await Promise.all([ensureProducts(), loadReturns()]);
   }
 
+  async function loadStockHistory() {
+    try {
+      const resp = await API.getStockHistory({
+        date_from: S.stockHistDateFrom || '',
+        date_to: S.stockHistDateTo || '',
+      });
+      if (resp.success) S.stockHistory = resp.data || [];
+    } catch (e) { console.error('Stock history:', e); }
+    Scr.fillStockHistory();
+  }
+
   // ═══ Phase 7: ADMIN DATA LOADERS ═══
 
   function loadConfigScreen() {
@@ -530,8 +543,9 @@ const App = (() => {
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="${i.action || "App.go('" + i.r + "')"}">${i.lbl}</div>`
       ).join(''));
       const recordItems = [
-        { r: 'waste',   lbl: 'Waste Log', perm: 'fn_view_waste' },
-        { r: 'returns', lbl: 'Returns',   perm: 'fn_view_returns' },
+        { r: 'waste',         lbl: 'Waste Log',      perm: 'fn_view_waste' },
+        { r: 'returns',       lbl: 'Returns',         perm: 'fn_view_returns' },
+        { r: 'stock-history', lbl: 'Stock History',    perm: 'fn_create_order' },
       ];
       html += sdGroup('records', '▤', 'Records', recordItems.filter(i => !i.perm || hasPerm(i.perm)).map(
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
@@ -582,7 +596,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2.5 | 15 Mar 2026</div>
+      <div class="sd-version">v2.2.6 | 15 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -630,6 +644,7 @@ const App = (() => {
       html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
       if (hasPerm('fn_view_waste')) html += mobItem('waste', '▤', 'Waste Log');
       if (hasPerm('fn_view_returns')) html += mobItem('returns', '▤', 'Returns');
+      if (hasPerm('fn_create_order')) html += mobItem('stock-history', '▤', 'Stock History');
     } else {
       // BC role
       html += '<div style="height:8px"></div><div class="mob-sidebar-section">Orders</div>';
@@ -661,7 +676,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.5</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.6</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -782,7 +797,7 @@ const App = (() => {
     showProfilePopup, startOrder, goToBrowse, hasPerm, refreshCurrent,
     openSidebar, closeSidebar, toggleSidebar, stopSessionMonitor,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
-    loadOrders, loadOrderDetail, loadWaste, loadReturns, loadBrowseData, loadQuotas, loadQuotaScreen,
+    loadOrders, loadOrderDetail, loadWaste, loadReturns, loadStockHistory, loadBrowseData, loadQuotas, loadQuotaScreen,
     loadBCDashboard, loadPrintCentre, loadBCReturnsData, loadAdminProducts, loadProdEdit,
     loadDeptMappingData, loadVisibility, loadAccessMatrix,
     loadWasteDashboard, loadTopProducts, loadCutoffData, loadAuditData,

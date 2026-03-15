@@ -1,10 +1,9 @@
 /**
- * Version 1.6.0 | 15 MAR 2026 | Siam Palette Group
+ * Version 1.6.1 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Feature: Stock validation on submit (hard block if stock not filled)
- * Fix: Stock "0" correctly saved as 0 (not null)
+ * Feature: Stock History screen + Stock validation on submit
  * ═══════════════════════════════════════════
  */
 
@@ -757,6 +756,126 @@ const Scr = (() => {
     }
   }
 
+  // ═══ STOCK HISTORY ═══
+  let _shDateFrom = '';
+  let _shDateTo = '';
+  let _shShowCount = 20;
+
+  function renderStockHistory() {
+    const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
+    const t = App.sydneyNow(); t.setDate(t.getDate() + 1);
+    _shDateFrom = App.S.stockHistDateFrom || App.fmtDate(y);
+    _shDateTo = App.S.stockHistDateTo || App.fmtDate(t);
+    App.S.stockHistDateFrom = _shDateFrom;
+    App.S.stockHistDateTo = _shDateTo;
+    _shShowCount = 20;
+
+    return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Stock History</div></div>
+      <div class="order-date-bar">
+        <span class="date-label">📅 Delivery:</span>
+        <input type="date" class="date-inp" value="${_shDateFrom}" onchange="Scr.setShDate('from',this.value)">
+        <span style="color:var(--t4)">→</span>
+        <input type="date" class="date-inp" value="${_shDateTo}" onchange="Scr.setShDate('to',this.value)">
+        <span class="date-link" onclick="Scr.setShDatePreset('3day')">3 วัน</span>
+        <span class="date-link" onclick="Scr.setShDatePreset('7day')">7 วัน</span>
+      </div>
+      <div class="content" id="shContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+  }
+
+  function fillStockHistory() {
+    const el = document.getElementById('shContent');
+    if (!el) return;
+    const all = App.S.stockHistory || [];
+
+    if (!all.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">ไม่มีข้อมูล</div><div class="empty-desc">ลองเปลี่ยนช่วงวัน</div></div>';
+      return;
+    }
+
+    // Group by order_id (preserve order from API — newest first)
+    const orderGroups = [];
+    const orderMap = {};
+    all.forEach(h => {
+      if (!orderMap[h.order_id]) {
+        orderMap[h.order_id] = { order_id: h.order_id, delivery_date: h.delivery_date, created_at: h.created_at, items: [] };
+        orderGroups.push(orderMap[h.order_id]);
+      }
+      orderMap[h.order_id].items.push(h);
+    });
+
+    // Render grouped by order
+    let html = '<div style="font-size:11px;color:var(--t3);margin-bottom:8px">' + orderGroups.length + ' orders · ' + all.length + ' records</div>';
+
+    const visible = orderGroups.slice(0, _shShowCount);
+    const hasMore = orderGroups.length > _shShowCount;
+
+    visible.forEach(grp => {
+      // Sort items A-Z within each order
+      grp.items.sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+
+      // Order header
+      const orderDate = grp.created_at ? grp.created_at.substring(11, 16) : '';
+      html += `<div class="section-card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:700;color:var(--acc);cursor:pointer;text-decoration:underline" onclick="App.go('order-detail',{id:'${App.esc(grp.order_id)}'})">${App.esc(grp.order_id)}</span>
+          <span style="font-size:11px;color:var(--t3)">ส่ง ${App.fmtDateThai(grp.delivery_date)}${orderDate ? ' · ' + orderDate : ''}</span>
+        </div>`;
+
+      // Table
+      html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1.5px solid var(--bd)">
+          <th style="text-align:left;padding:5px 8px;font-weight:600;font-size:11px">Product</th>
+          <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Quota</th>
+          <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Stock</th>
+          <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Order</th>
+        </tr></thead><tbody>`;
+
+      grp.items.forEach(h => {
+        const isZeroBoth = h.stock_on_hand === 0 && h.order_qty === 0;
+        const bg = isZeroBoth ? ' style="background:var(--red-bg)"' : '';
+        const sColor = h.stock_on_hand === 0 ? 'color:var(--red);font-weight:600' : '';
+        const oWeight = h.order_qty > 0 ? 'font-weight:600' : 'color:var(--t4)';
+        html += `<tr${bg}>
+          <td style="padding:4px 8px;text-align:left;border-bottom:0.5px solid var(--bd2)">${App.esc(h.product_name)}</td>
+          <td style="padding:4px;text-align:center;border-bottom:0.5px solid var(--bd2);color:var(--t3)">${h.quota_qty}</td>
+          <td style="padding:4px;text-align:center;border-bottom:0.5px solid var(--bd2);${sColor}">${h.stock_on_hand}</td>
+          <td style="padding:4px;text-align:center;border-bottom:0.5px solid var(--bd2);${oWeight}">${h.order_qty}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table></div></div>';
+    });
+
+    if (hasMore) {
+      html += '<div class="load-more" onclick="Scr.showMoreSh()">แสดง ' + _shShowCount + ' จาก ' + orderGroups.length + ' orders · โหลดเพิ่ม ↓</div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  function setShDate(which, val) {
+    if (which === 'from') { _shDateFrom = val; App.S.stockHistDateFrom = val; }
+    else { _shDateTo = val; App.S.stockHistDateTo = val; }
+    App.loadStockHistory();
+  }
+
+  function setShDatePreset(p) {
+    const today = App.todaySydney();
+    if (p === '3day') {
+      const d = App.sydneyNow(); d.setDate(d.getDate() - 2);
+      _shDateFrom = App.fmtDate(d);
+    } else if (p === '7day') {
+      const d = App.sydneyNow(); d.setDate(d.getDate() - 6);
+      _shDateFrom = App.fmtDate(d);
+    }
+    _shDateTo = today;
+    App.S.stockHistDateFrom = _shDateFrom;
+    App.S.stockHistDateTo = _shDateTo;
+    App.loadStockHistory();
+  }
+
+  function showMoreSh() { _shShowCount += 20; fillStockHistory(); }
+
   // ═══ SET QUOTA ═══
   const DAYS = ['จ','อ','พ','พฤ','ศ','ส','อา'];
   // day_of_week: 0=Sun,1=Mon...6=Sat → display order: Mon=1,Tue=2,...Sun=0
@@ -1395,6 +1514,7 @@ const Scr = (() => {
     renderWaste, fillWaste, sortWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
     showWasteForm, saveWaste, showWasteEdit, saveWasteEdit, confirmDeleteWaste, doDeleteWaste,
     renderReturns, fillReturns, sortReturns, setRetDate, setRetDatePreset, showMoreReturns,
+    renderStockHistory, fillStockHistory, setShDate, setShDatePreset, showMoreSh,
     showReturnDetail, showReturnForm, saveReturn, showReturnEdit, saveReturnEdit,
   };
 })();

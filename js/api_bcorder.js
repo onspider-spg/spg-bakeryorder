@@ -1,5 +1,5 @@
 /**
- * Version 1.7.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.7.3 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
@@ -74,6 +74,7 @@ const API = (() => {
     getWasteLog:    (p = {})    => get('get_waste_log', p),
     getReturns:     (p = {})    => get('get_returns', p),
     getQuotas:      (p = {})    => get('get_quotas', p),
+    getStockHistory: (p = {})   => get('get_stock_history', p),
     createOrder:    (b)         => post('create_order', b),
     editOrder:      (b)         => post('edit_order', b),
     cancelOrder:    (b)         => post('cancel_order', b),
