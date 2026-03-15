@@ -1,9 +1,9 @@
 /**
- * Version 1.5.5 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.5.6 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Print section checkbox multi-select + remove urgent highlight
+ * Fix: Remove fulfilment qty max cap — allow sending more than ordered
  * ═══════════════════════════════════════════
  */
 
@@ -261,7 +261,7 @@ const Scr2 = (() => {
       partialInput = `<div style="padding:8px 12px;background:var(--orange-bg);border-radius:var(--rd);margin-top:4px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
           <span style="font-size:12px;font-weight:600;color:var(--orange)">Actual qty:</span>
-          <input type="number" min="0" max="${i.qty_ordered}" value="${fs.qty_sent}" style="width:60px;padding:4px 6px;border:1px solid var(--orange);border-radius:var(--rd);font-size:14px;font-weight:700;text-align:center;font-family:inherit" oninput="Scr2.setFulfilQty('${i.item_id}',this.value)">
+          <input type="number" min="0" value="${fs.qty_sent}" style="width:60px;padding:4px 6px;border:1px solid var(--orange);border-radius:var(--rd);font-size:14px;font-weight:700;text-align:center;font-family:inherit" oninput="Scr2.setFulfilQty('${i.item_id}',this.value)">
           <span style="font-size:11px;color:var(--t3)">/ ${i.qty_ordered} ${App.esc(i.unit)}</span>
         </div>
         <input style="width:100%;padding:6px 8px;border:1px solid var(--orange);border-radius:var(--rd);font-size:12px;font-family:inherit" placeholder="Reason..." value="${App.esc(fs.note)}" oninput="Scr2.setFulfilNote('${i.item_id}',this.value)">

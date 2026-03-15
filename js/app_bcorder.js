@@ -1,9 +1,9 @@
 /**
- * Version 2.2.9 | 16 MAR 2026 | Siam Palette Group
+ * Version 2.3.0 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: enterEditMode restore stockInputs as {s1,s2} for 2-point stores
+ * Fix: getStoreName shows store_name + location
  * ═══════════════════════════════════════════
  */
 
@@ -804,7 +804,7 @@ const App = (() => {
   function tomorrowSydney() { const d = sydneyNow(); d.setDate(d.getDate() + 1); return fmtDate(d); }
   function fmtDateThai(str) { if (!str) return ''; const d = new Date(str + 'T00:00:00'); const m = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return d.getDate() + ' ' + m[d.getMonth()] + ' ' + d.getFullYear(); }
   function fmtDateAU(str) { if (!str) return ''; const d = new Date(str + 'T00:00:00'); return d.toLocaleDateString('en-AU', { day: '2-digit', month: 'short' }); }
-  function getStoreName(id) { if (!id) return ''; if (id === 'ALL') return 'ทุกร้าน'; const s = S.stores.find(s => s.store_id === id); return s ? s.store_name : id; }
+  function getStoreName(id) { if (!id) return ''; if (id === 'ALL') return 'ทุกร้าน'; const s = S.stores.find(s => s.store_id === id); if (!s) return id; return s.location ? s.store_name + ' · ' + s.location : s.store_name; }
   function getDeptName(id) { if (!id) return ''; if (id === 'ALL') return 'All'; const d = S.departments.find(d => d.dept_id === id); return d ? d.dept_name : id; }
 
   // ═══ SESSION MONITOR ═══
