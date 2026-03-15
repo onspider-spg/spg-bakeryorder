@@ -1,9 +1,9 @@
 /**
- * Version 1.6.2 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.6.3 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Feature: Edit Order full form (restore cart + add items + stock retain)
+ * Fix: Waste dropdown (Expired/Damaged) + Return issue types + auto-waste reason
  * ═══════════════════════════════════════════
  */
 
@@ -1153,7 +1153,7 @@ const Scr = (() => {
 
     const visible = filtered.slice(0, _wasteShowCount);
     const hasMore = filtered.length > _wasteShowCount;
-    const reasonColor = (r) => r === 'Expired' ? 'var(--red)' : r === 'Damaged' ? 'var(--orange)' : r === 'Production Error' ? 'var(--acc)' : 'var(--t2)';
+    const reasonColor = (r) => r === 'Expired' ? 'var(--red)' : r === 'Damaged' ? 'var(--orange)' : 'var(--t2)';
     const wsb = (k, lbl) => `<span class="sort-btn${_wasteSortKey === k ? ' sort-active' : ''}" onclick="Scr.sortWaste('${k}')">${lbl} ${sortIco(_wasteSortKey, k, _wasteSortDir)}</span>`;
 
     el.innerHTML = `<div class="list-header">
@@ -1193,7 +1193,8 @@ const Scr = (() => {
       <div class="fg"><label class="lb">สินค้า *</label><select class="sel" id="wfProduct"><option value="">🔍 เลือก...</option>${opts}</select></div>
       <div class="fg"><label class="lb">จำนวน *</label><input class="inp" type="number" id="wfQty" placeholder="0" min="1" style="font-size:16px;font-weight:700"></div>
       <div class="fg"><label class="lb">วันผลิต</label><input class="inp" type="date" id="wfProdDate"></div>
-      <div class="fg"><label class="lb">สาเหตุ *</label><select class="sel" id="wfReason"><option value="Expired">Expired</option><option value="Damaged">Damaged</option><option value="Production Error">Prod Error</option><option value="Quality">Quality</option></select></div>
+      <div class="fg"><label class="lb">สาเหตุ *</label><select class="sel" id="wfReason"><option value="Expired">Expired</option><option value="Damaged">Damaged</option></select></div>
+      <div class="fg"><label class="lb">หมายเหตุ</label><input class="inp" id="wfNote" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"></div>
       <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="wfSaveBtn" onclick="Scr.saveWaste()">💾 บันทึก</button></div>
     </div>`);
   }
@@ -1206,13 +1207,14 @@ const Scr = (() => {
     const qty = parseInt(document.getElementById('wfQty')?.value) || 0;
     const reason = document.getElementById('wfReason')?.value;
     const prodDate = document.getElementById('wfProdDate')?.value || '';
+    const note = document.getElementById('wfNote')?.value || '';
 
     if (!productId) { App.toast('เลือกสินค้า', 'error'); return; }
     if (!qty || qty <= 0) { App.toast('ใส่จำนวน', 'error'); return; }
 
     btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
     try {
-      const resp = await API.createWaste({ product_id: productId, quantity: qty, reason, production_date: prodDate });
+      const resp = await API.createWaste({ product_id: productId, quantity: qty, reason, production_date: prodDate, note });
       if (resp.success) {
         App.closeDialog();
         App.toast(resp.message || '✅ บันทึกแล้ว', 'success');
@@ -1247,8 +1249,6 @@ const Scr = (() => {
       <div class="fg"><label class="lb">สาเหตุ</label><select class="sel" id="weReason">
         <option value="Expired"${w.reason === 'Expired' ? ' selected' : ''}>Expired</option>
         <option value="Damaged"${w.reason === 'Damaged' ? ' selected' : ''}>Damaged</option>
-        <option value="Production Error"${w.reason === 'Production Error' ? ' selected' : ''}>Prod Error</option>
-        <option value="Quality"${w.reason === 'Quality' ? ' selected' : ''}>Quality</option>
       </select></div>
       <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="weSaveBtn" onclick="Scr.saveWasteEdit('${wasteId}')">💾 บันทึก</button></div>
     </div>`);
@@ -1441,7 +1441,7 @@ const Scr = (() => {
       <div class="popup-header"><div class="popup-title">↩️ แจ้ง Return</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
       <div class="fg"><label class="lb">❶ สินค้า *</label><select class="sel" id="rfProduct"><option value="">-- เลือก --</option>${opts}</select></div>
       <div class="fg"><label class="lb">❷ จำนวน *</label><input class="inp" type="number" id="rfQty" min="1" style="font-size:16px;font-weight:700"></div>
-      <div class="fg"><label class="lb">❸ ปัญหา *</label><select class="sel" id="rfIssue"><option value="Quality">Quality</option><option value="Wrong qty">Wrong qty</option><option value="Wrong product">Wrong product</option><option value="Damaged">Damaged</option></select></div>
+      <div class="fg"><label class="lb">❸ ปัญหา *</label><select class="sel" id="rfIssue"><option value="Quality">Quality</option><option value="Wrong Qty">Wrong Qty</option><option value="Wrong Product">Wrong Product</option><option value="Product Error">Product Error</option></select></div>
       <div class="fg"><label class="lb">❹ รายละเอียด</label><textarea class="inp" id="rfDesc" style="height:60px;resize:none" placeholder="อธิบาย..."></textarea></div>
       <div class="fg"><label class="lb">❺ วันผลิต</label><input class="inp" type="date" id="rfProdDate"></div>
       <div class="fg"><label class="lb">❻ การจัดการ *</label><select class="sel" id="rfAction"><option value="return_to_bakery">ส่งคืน BC</option><option value="discard_at_store">ทิ้งที่ร้าน</option></select></div>
@@ -1503,9 +1503,9 @@ const Scr = (() => {
       <div class="fg"><label class="lb">จำนวนใหม่</label><input class="inp" type="number" id="reQty" value="${r.quantity}" min="1" style="font-size:16px;font-weight:700;width:120px;text-align:center"></div>
       <div class="fg"><label class="lb">ปัญหา</label><select class="sel" id="reIssue">
         <option value="Quality"${r.issue_type === 'Quality' ? ' selected' : ''}>Quality</option>
-        <option value="Wrong qty"${r.issue_type === 'Wrong qty' ? ' selected' : ''}>Wrong qty</option>
-        <option value="Wrong product"${r.issue_type === 'Wrong product' ? ' selected' : ''}>Wrong product</option>
-        <option value="Damaged"${r.issue_type === 'Damaged' ? ' selected' : ''}>Damaged</option>
+        <option value="Wrong Qty"${r.issue_type === 'Wrong Qty' ? ' selected' : ''}>Wrong Qty</option>
+        <option value="Wrong Product"${r.issue_type === 'Wrong Product' ? ' selected' : ''}>Wrong Product</option>
+        <option value="Product Error"${r.issue_type === 'Product Error' ? ' selected' : ''}>Product Error</option>
       </select></div>
       <div class="fg"><label class="lb">รายละเอียด</label><textarea class="inp" id="reDesc" style="height:50px;resize:none">${App.esc(r.description || '')}</textarea></div>
       <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="reSaveBtn" onclick="Scr.saveReturnEdit('${r.return_id}')">💾 บันทึก</button></div>
