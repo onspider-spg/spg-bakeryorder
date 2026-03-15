@@ -1,5 +1,5 @@
 /**
- * Version 2.2.6 | 15 MAR 2026 | Siam Palette Group
+ * Version 2.2.7 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -510,6 +510,52 @@ const App = (() => {
     }
   }
 
+  function enterEditMode(orderId) {
+    const data = S.currentOrder;
+    if (!data || data.order.order_id !== orderId) return;
+    const o = data.order;
+    const items = data.items || [];
+
+    // Restore cart from order items
+    S.cart = items.filter(i => i.qty_ordered > 0).map(i => ({
+      product_id: i.product_id,
+      product_name: i.product_name,
+      qty: i.qty_ordered,
+      unit: i.unit || '',
+      is_urgent: i.is_urgent || false,
+      note: i.item_note || '',
+      stock_on_hand: i.stock_on_hand != null ? i.stock_on_hand : null,
+      section_id: i.section_id || '',
+      _auto: false,
+    }));
+
+    // Restore stockInputs from all items (including stock=0)
+    S.stockInputs = {};
+    items.forEach(i => {
+      if (i.stock_on_hand != null) {
+        S.stockInputs[i.product_id] = String(i.stock_on_hand);
+      }
+    });
+
+    // Set edit state
+    S.editingOrderId = orderId;
+    S.deliveryDate = o.delivery_date;
+    S.headerNote = o.header_note || '';
+    S.productSearch = '';
+    S.productFilter = 'all';
+    S._quotasDay = -1; // force quota reload for this date
+
+    go('browse');
+  }
+
+  function cancelEditMode() {
+    S.editingOrderId = null;
+    S.cart = [];
+    S.stockInputs = {};
+    S.headerNote = '';
+    go('orders');
+  }
+
   function refreshCurrent() {
     // Hard refresh — เหมือน cmd+shift+R
     location.reload();
@@ -596,7 +642,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2.6 | 15 Mar 2026</div>
+      <div class="sd-version">v2.2.7 | 16 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -676,7 +722,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.6</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.7</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -794,7 +840,7 @@ const App = (() => {
 
   return {
     S, go, toast, showDialog, closeDialog, esc, debounce,
-    showProfilePopup, startOrder, goToBrowse, hasPerm, refreshCurrent,
+    showProfilePopup, startOrder, goToBrowse, enterEditMode, cancelEditMode, hasPerm, refreshCurrent,
     openSidebar, closeSidebar, toggleSidebar, stopSessionMonitor,
     getStockPoints, getCartItem, setCartQty, setCartStock, toggleCartUrgent, setCartNote,
     loadOrders, loadOrderDetail, loadWaste, loadReturns, loadStockHistory, loadBrowseData, loadQuotas, loadQuotaScreen,

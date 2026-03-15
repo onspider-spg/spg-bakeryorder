@@ -1,9 +1,9 @@
 /**
- * Version 1.6.1 | 15 MAR 2026 | Siam Palette Group
+ * Version 1.6.2 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Feature: Stock History screen + Stock validation on submit
+ * Feature: Edit Order full form (restore cart + add items + stock retain)
  * ═══════════════════════════════════════════
  */
 
@@ -84,14 +84,20 @@ const Scr = (() => {
     const isCustom = !isToday && !isTmr;
     const hasData = App.S.cart.length > 0 || Object.keys(App.S.stockInputs).length > 0;
 
-    const resumeBar = hasData ? `<div class="browse-resume">
+    const isEditMode = !!App.S.editingOrderId;
+    const editBanner = isEditMode ? `<div style="background:var(--orange-bg,#fff3cd);padding:8px 14px;display:flex;justify-content:space-between;align-items:center;border-radius:var(--rd);margin-bottom:8px">
+      <div><div style="font-size:12px;font-weight:700;color:var(--orange)">✏️ กำลังแก้ไข ${App.esc(App.S.editingOrderId)}</div><div style="font-size:10px;color:var(--orange)">แก้ไขเสร็จกดส่ง · เพิ่มสินค้าใหม่ได้</div></div>
+      <button class="btn btn-outline" style="padding:3px 10px;font-size:11px;color:var(--orange);border-color:var(--orange)" onclick="App.cancelEditMode()">ยกเลิก</button>
+    </div>` : '';
+
+    const resumeBar = !isEditMode && hasData ? `<div class="browse-resume">
       <span class="browse-resume-text">📝 กำลังสั่ง${App.S.cart.length ? ' (' + App.S.cart.length + ' รายการ)' : ' (มีสต็อกค้าง)'}</span>
       <button class="btn btn-outline" style="padding:3px 10px;font-size:11px" onclick="App.startOrder()">🗑️ ล้างใหม่</button>
     </div>` : '';
 
     return `
       <div class="browse-header">
-        ${resumeBar}
+        ${editBanner}${resumeBar}
         <div class="date-pills">
           <span class="date-label">ส่งวัน</span>
           <div class="chip${isToday ? ' active' : ''}" onclick="Scr.setDate('today')">วันนี้</div>
@@ -371,14 +377,22 @@ const Scr = (() => {
       </div>
     </div>`).join('');
 
+    const isEditMode = !!App.S.editingOrderId;
+    const editBar = isEditMode ? `<div style="background:var(--orange-bg,#fff3cd);padding:8px 14px;font-size:12px;font-weight:700;color:var(--orange)">✏️ กำลังแก้ไข ${App.esc(App.S.editingOrderId)}</div>` : '';
+    const submitLabel = isEditMode
+      ? '💾 บันทึกการแก้ไข (' + items.length + ' รายการ)'
+      : '📤 ส่ง Order (' + items.length + ' รายการ)';
+    const submitClass = isEditMode ? 'btn btn-primary btn-full cart-submit' : 'btn btn-green btn-full cart-submit';
+
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('browse')">←</button><div class="toolbar-title">ตะกร้า (${items.length})</div><div class="toolbar-sub">ส่ง ${App.fmtDateThai(dd)}</div></div>
       <div class="content" id="cartContent">
+        ${editBar}
         ${cartHtml}
         <div class="cart-note-section">
           <div class="lb">หมายเหตุ (ทั้ง Order)</div>
           <textarea class="inp" rows="2" placeholder="เช่น ส่งก่อน 8 โมง..." oninput="App.S.headerNote=this.value">${App.esc(App.S.headerNote)}</textarea>
         </div>
-        <button class="btn btn-green btn-full cart-submit" id="submitBtn" onclick="Scr.submitOrder()">📤 ส่ง Order (${items.length} รายการ)</button>
+        <button class="${submitClass}" id="submitBtn" onclick="Scr.submitOrder()">${submitLabel}</button>
       </div>`;
   }
 
@@ -445,27 +459,50 @@ const Scr = (() => {
     }).filter(s => s.stock_on_hand > 0 || s.order_qty > 0);
 
     try {
-      const resp = await API.createOrder({
-        delivery_date: App.S.deliveryDate,
-        header_note: App.S.headerNote,
-        items,
-        all_stock: allStock,
-      });
+      const isEditMode = !!App.S.editingOrderId;
+      let resp;
+
+      if (isEditMode) {
+        // ── EDIT MODE: update existing order ──
+        resp = await API.editOrder({
+          order_id: App.S.editingOrderId,
+          delivery_date: App.S.deliveryDate,
+          header_note: App.S.headerNote,
+          items,
+          all_stock: allStock,
+          full_replace: true,
+        });
+      } else {
+        // ── CREATE MODE: new order ──
+        resp = await API.createOrder({
+          delivery_date: App.S.deliveryDate,
+          header_note: App.S.headerNote,
+          items,
+          all_stock: allStock,
+        });
+      }
 
       if (resp.success) {
-        App.toast(resp.message || '✅ สั่งเรียบร้อย!', 'success');
+        App.toast(resp.message || (isEditMode ? '✅ แก้ไขเรียบร้อย!' : '✅ สั่งเรียบร้อย!'), 'success');
         App.S.cart = [];
-        App.S._ordersLoaded = false; // force reload orders next time
+        App.S.stockInputs = {};
+        App.S.editingOrderId = null;
+        App.S._ordersLoaded = false;
         App.go('home');
       } else {
         App.toast(resp.message || resp.error || 'เกิดข้อผิดพลาด', 'error');
         btn.disabled = false;
-        btn.textContent = '📤 ส่ง Order (' + App.S.cart.length + ' รายการ)';
+        btn.textContent = isEditMode
+          ? '💾 บันทึกการแก้ไข (' + App.S.cart.length + ' รายการ)'
+          : '📤 ส่ง Order (' + App.S.cart.length + ' รายการ)';
       }
     } catch (e) {
       App.toast('Network error: ' + e.message, 'error');
+      const isEdit = !!App.S.editingOrderId;
       btn.disabled = false;
-      btn.textContent = '📤 ส่ง Order (' + App.S.cart.length + ' รายการ)';
+      btn.textContent = isEdit
+        ? '💾 บันทึกการแก้ไข (' + App.S.cart.length + ' รายการ)'
+        : '📤 ส่ง Order (' + App.S.cart.length + ' รายการ)';
     }
   }
 
@@ -650,7 +687,8 @@ const Scr = (() => {
       <div class="detail-section-title">รายการ (${items.length})</div>
       <div class="detail-items">${items.map(i => renderDetailItem(i, canEdit)).join('')}</div>
 
-      ${canEdit ? '<div style="margin-top:14px"><button class="btn btn-danger btn-full" onclick="Scr.confirmCancel(\'' + o.order_id + '\')">🚫 ยกเลิก Order</button></div>' : ''}
+      ${canEdit && App.S.role === 'store' ? '<div style="margin-top:14px"><button class="btn btn-primary btn-full" onclick="App.enterEditMode(\'' + o.order_id + '\')">✏️ Edit Order</button></div>' : ''}
+      ${canEdit ? '<div style="margin-top:8px"><button class="btn btn-danger btn-full" onclick="Scr.confirmCancel(\'' + o.order_id + '\')">🚫 ยกเลิก Order</button></div>' : ''}
       ${o.status === 'Cancelled' ? '<div style="margin-top:8px;font-size:12px;color:var(--red)">ยกเลิกเมื่อ ' + App.fmtDateThai(o.cancelled_at?.substring(0, 10)) + (o.cancel_reason ? ' — ' + App.esc(o.cancel_reason) : '') + '</div>' : ''}`;
   }
 
