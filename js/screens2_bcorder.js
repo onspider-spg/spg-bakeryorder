@@ -1,9 +1,9 @@
 /**
- * Version 1.5.2 | 14 MAR 2026 | Siam Palette Group
+ * Version 1.5.3 | 15 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Product Edit section-card + Image Upload
+ * Fix: Print multi-page support (30 rows/page, repeated headers, page numbers)
  * ═══════════════════════════════════════════
  */
 
@@ -404,8 +404,8 @@ const Scr2 = (() => {
       ${sorted.map(s => `<div class="chip${_printSection === s ? ' active' : ''}" onclick="Scr2.setPrintSection('${s}')">${App.esc(s)}</div>`).join('')}
     </div>`;
 
-    // Controls card (white background section)
-    let controlsCard = `<div class="section-card" style="margin-bottom:10px">${tabs}${datePicker}${secChips}`;
+    // Controls card (white background section — hidden on print)
+    let controlsCard = `<div class="section-card print-controls" style="margin-bottom:10px">${tabs}${datePicker}${secChips}`;
     if (_printTab === 'slip') {
       if (!_slipStore && d.stores?.length) _slipStore = d.stores[0];
       controlsCard += `<div style="margin-top:8px"><select class="sel" style="max-width:300px" onchange="Scr2.setSlipStore(this.value)">
@@ -428,37 +428,56 @@ const Scr2 = (() => {
 
     const stores = d.stores || [];
     const orderIds = (d.orders || []).map(o => o.order_id);
+    const ROWS_PER_PAGE = 30;
+    const totalPages = Math.ceil(prods.length / ROWS_PER_PAGE);
+    const sectionLabel = _printSection === 'all' ? 'ALL' : _printSection.toUpperCase();
+    const orderStr = orderIds.length > 3 ? orderIds.slice(0, 3).join(', ') + '...' : orderIds.join(', ');
 
-    // Header
-    let html = `<div style="text-align:center;margin-bottom:8px">
-      <div style="font-size:14px;font-weight:700">PRODUCTION SHEET \u2014 ${_printSection === 'all' ? 'ALL' : _printSection.toUpperCase()}</div>
-      <div style="font-size:11px;color:var(--t3)">Delivery: ${App.fmtDateThai(_printDate)} | Orders: ${orderIds.length > 3 ? orderIds.slice(0, 3).join(', ') + '...' : orderIds.join(', ')}</div>
-    </div>`;
+    // ─── Helper: build table header row ───
+    const thRow = `<tr><th class="ptbl-name" style="text-align:left">Product</th><th>Total</th>${stores.map(s => '<th>' + App.esc(s) + '</th>').join('')}</tr>`;
 
-    // Table
-    html += `<div style="overflow-x:auto"><table class="ptbl"><thead><tr>
-      <th style="text-align:left">Product</th><th>Total</th>
-      ${stores.map(s => `<th>${App.esc(s)}</th>`).join('')}
-    </tr></thead><tbody>`;
-
-    prods.forEach(p => {
+    // ─── Helper: build one product row ───
+    function prodRow(p) {
       const isUrg = p.urgent;
-      html += `<tr${isUrg ? ' style="background:#fff3cd"' : ''}>
-        <td style="text-align:left"><b>${App.esc(p.product_name)}</b></td>
+      return `<tr${isUrg ? ' style="background:#fff3cd"' : ''}>
+        <td class="ptbl-name"><b>${App.esc(p.product_name)}</b></td>
         <td><b>${p.total}</b></td>
-        ${stores.map(s => {
-          const sv = p.stores[s];
-          if (!sv) return '<td>\u2014</td>';
-          return `<td>${sv.qty}${sv.urgent ? '*' : ''}</td>`;
-        }).join('')}
+        ${stores.map(s => { const sv = p.stores[s]; if (!sv) return '<td>\u2014</td>'; return '<td>' + sv.qty + (sv.urgent ? '*' : '') + '</td>'; }).join('')}
       </tr>`;
-    });
+    }
 
-    html += '</tbody></table></div>';
-    html += '<div style="font-size:10px;color:var(--t3);margin-top:4px">* = URGENT \u26A1 | Sorted A-Z by product name</div>';
-    html += `<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" style="padding:10px 24px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print Production Sheet</button></div>`;
+    // ─── Helper: page header HTML ───
+    function pageHeader() {
+      return `<div class="print-page-header"><div class="print-page-title">PRODUCTION SHEET \u2014 ${sectionLabel}</div><div class="print-page-sub">Delivery: ${App.fmtDateThai(_printDate)} | Orders: ${orderStr}</div></div>`;
+    }
 
-    return html;
+    // ─── SCREEN: One long scrolling table ───
+    let screen = '<div class="print-screen-only">';
+    screen += `<div style="text-align:center;margin-bottom:8px"><div style="font-size:14px;font-weight:700">PRODUCTION SHEET \u2014 ${sectionLabel}</div><div style="font-size:11px;color:var(--t3)">Delivery: ${App.fmtDateThai(_printDate)} | Orders: ${orderStr}</div></div>`;
+    screen += '<table class="ptbl"><thead>' + thRow + '</thead><tbody>';
+    prods.forEach(p => { screen += prodRow(p); });
+    screen += '</tbody></table>';
+    screen += '<div style="font-size:10px;color:var(--t3);margin-top:4px">* = URGENT \u26A1 | Sorted A-Z by product name</div>';
+    screen += '<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" style="padding:10px 24px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print Production Sheet</button></div>';
+    screen += '</div>';
+
+    // ─── PRINT: Paginated pages (30 rows each) ───
+    let print = '';
+    for (let page = 0; page < totalPages; page++) {
+      const chunk = prods.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE);
+      print += '<div class="print-page">';
+      print += pageHeader();
+      print += '<table class="ptbl"><thead>' + thRow + '</thead><tbody>';
+      chunk.forEach(p => { print += prodRow(p); });
+      print += '</tbody></table>';
+      if (page === totalPages - 1) {
+        print += '<div class="print-legend">* = URGENT \u26A1 | Sorted A-Z by product name</div>';
+      }
+      print += '<div class="print-page-footer">Page ' + (page + 1) + ' of ' + totalPages + '</div>';
+      print += '</div>';
+    }
+
+    return screen + print;
   }
 
   function renderDeliverySlip(d) {
@@ -479,30 +498,61 @@ const Scr2 = (() => {
     // Collect order IDs for this store
     const storeOrders = (d.orders || []).filter(o => o.store_id === _slipStore);
     const orderStr = storeOrders.map(o => o.order_id).join(', ');
-    const displayName = storeOrders[0]?.display_name || '';
+    const storeName = App.getStoreName(_slipStore);
+    const ROWS_PER_PAGE = 30;
 
-    let slip = `<div style="border:1px solid #ccc;padding:12px;font-size:11px;max-width:300px;margin:8px auto;font-family:monospace;line-height:1.5">`;
-    slip += `<div style="text-align:center;border-bottom:1px dashed #ccc;padding-bottom:6px;margin-bottom:6px">
-      <div style="font-size:14px;font-weight:700">${App.esc(App.getStoreName(_slipStore))}</div>
-      <div>Delivery: ${App.fmtDateThai(_printDate)}</div>
-      <div style="font-size:10px;color:#aaa">Orders: ${App.esc(orderStr)}</div>
-    </div>`;
-
+    // ─── Build flat list of lines (section headers + items) ───
+    const lines = [];
     for (const sec of Object.keys(sections).sort()) {
-      slip += `<div style="font-weight:700;margin:6px 0 2px;border-top:1px solid #eee;padding-top:4px">\u2550\u2550\u2550 ${App.esc(sec.toUpperCase())} \u2550\u2550\u2550</div>`;
-      if (displayName) slip += `<div style="font-size:10px;color:#888">--- ${App.esc(displayName)} ---</div>`;
+      lines.push({ type: 'section', label: sec.toUpperCase() });
       sections[sec].forEach(p => {
         const sv = p.stores[_slipStore];
-        const star = sv?.urgent ? '\u2B50 ' : '';
-        slip += `<div style="display:flex;justify-content:space-between;padding:1px 0"><span>${star}<b>${App.esc(p.product_name)}</b></span><span>${sv.qty} \u2192 ___</span></div>`;
+        lines.push({ type: 'item', name: p.product_name, qty: sv.qty, urgent: sv?.urgent });
       });
     }
 
-    slip += `<div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:6px;font-size:10px">Packed by: ____________<br>Checked by: ___________</div>`;
-    slip += '</div>';
+    // ─── Helper: render one line ───
+    function renderLine(ln) {
+      if (ln.type === 'section') {
+        return '<div style="font-weight:700;margin:6px 0 2px;border-top:1px solid #eee;padding-top:4px">\u2550\u2550\u2550 ' + App.esc(ln.label) + ' \u2550\u2550\u2550</div>';
+      }
+      const star = ln.urgent ? '\u2B50 ' : '';
+      return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span>' + star + '<b>' + App.esc(ln.name) + '</b></span><span>' + ln.qty + ' \u2192 ___</span></div>';
+    }
 
-    slip += `<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" style="padding:10px 24px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print Delivery Slip</button></div>`;
-    return slip;
+    // ─── Helper: slip header ───
+    function slipHeader() {
+      return '<div style="text-align:center;border-bottom:1px dashed #ccc;padding-bottom:6px;margin-bottom:6px"><div style="font-size:14px;font-weight:700">' + App.esc(storeName) + '</div><div>Delivery: ' + App.fmtDateThai(_printDate) + '</div><div style="font-size:10px;color:#aaa">Orders: ' + App.esc(orderStr) + '</div></div>';
+    }
+
+    // ─── SCREEN: One long scrolling slip ───
+    let screen = '<div class="print-screen-only">';
+    screen += '<div style="border:1px solid #ccc;padding:12px;font-size:12px;max-width:300px;margin:8px auto;font-family:monospace;line-height:1.5">';
+    screen += slipHeader();
+    lines.forEach(ln => { screen += renderLine(ln); });
+    screen += '<div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:6px;font-size:10px">Packed by: ____________<br>Checked by: ___________</div>';
+    screen += '</div>';
+    screen += '<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" style="padding:10px 24px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print Delivery Slip</button></div>';
+    screen += '</div>';
+
+    // ─── PRINT: Paginated pages ───
+    const totalPages = Math.max(1, Math.ceil(lines.length / ROWS_PER_PAGE));
+    let print = '';
+    for (let page = 0; page < totalPages; page++) {
+      const chunk = lines.slice(page * ROWS_PER_PAGE, (page + 1) * ROWS_PER_PAGE);
+      print += '<div class="print-page">';
+      print += '<div style="border:1px solid #ccc;padding:12px;font-size:12px;max-width:300px;margin:0 auto;font-family:monospace;line-height:1.5">';
+      print += slipHeader();
+      chunk.forEach(ln => { print += renderLine(ln); });
+      if (page === totalPages - 1) {
+        print += '<div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:6px;font-size:10px">Packed by: ____________<br>Checked by: ___________</div>';
+      }
+      print += '</div>';
+      print += '<div style="text-align:center;font-size:10px;color:#999;margin-top:8px">Page ' + (page + 1) + ' of ' + totalPages + '</div>';
+      print += '</div>';
+    }
+
+    return screen + print;
   }
 
   function setPrintTab(tab) { _printTab = tab; fillPrint(); }

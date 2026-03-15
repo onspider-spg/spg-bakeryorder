@@ -1,4 +1,4 @@
-/* Version 1.9.3 | 14 MAR 2026 | Siam Palette Group */
+/* Version 1.9.4 | 15 MAR 2026 | Siam Palette Group */
 /* SPG — BC Order v2 | styles_bcorder.css */
 /* Fix: topbar-name, img-drop-zone */
 
@@ -637,13 +637,55 @@ html, body {
 .q-mob-only { display: none; }
 
 /* ═══ PRINT CENTRE ═══ */
-.ptbl { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
-.ptbl th, .ptbl td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; }
-.ptbl th { background: #f0f0f0; font-weight: 600; font-size: 10px; }
+.ptbl { width: 100%; border-collapse: collapse; font-size: 14px; margin: 0; }
+.ptbl th, .ptbl td { border: 1px solid #ccc; padding: 6px 8px; text-align: center; }
+.ptbl th { background: #f0f0f0; font-weight: 600; font-size: 13px; }
+.ptbl td.ptbl-name { text-align: left; }
+
+/* Print page containers (hidden on screen, shown on print) */
+.print-page { display: none; }
+.print-screen-only { display: block; }
+
+/* Print controls bar — hidden on print */
+.print-controls { display: block; }
+
 @media print {
-  .topbar, .sidebar, .sidebar-overlay, .sidebar-panel, .toolbar, .hamburger, .chip, .btn, .toast-wrap, #dialog-root { display: none !important; }
-  .shell-main { overflow: visible !important; }
-  .content { overflow: visible !important; padding: 0 !important; }
+  /* Unlock all overflow containers so content flows to multiple pages */
+  body { height: auto !important; overflow: visible !important; }
+  #app { position: static !important; overflow: visible !important; height: auto !important; }
+  .shell, .shell-body { overflow: visible !important; height: auto !important; display: block !important; }
+  .shell-main { overflow: visible !important; height: auto !important; }
+  .content { overflow: visible !important; padding: 0 !important; height: auto !important; }
+
+  /* Hide all non-print UI */
+  .topbar, .sidebar, .sidebar-overlay, .sidebar-panel,
+  .toolbar, .hamburger, .chip, .btn, .toast-wrap,
+  #dialog-root, .bottomnav, .print-controls { display: none !important; }
+
+  /* Toggle screen/print content */
+  .print-screen-only { display: none !important; }
+  .print-page { display: block !important; page-break-after: always; }
+  .print-page:last-child { page-break-after: auto; }
+
+  /* Table rows avoid splitting across pages */
+  .ptbl tr { page-break-inside: avoid; }
+
+  /* Print page header */
+  .print-page-header { text-align: center; margin-bottom: 8px; }
+  .print-page-title { font-size: 16px; font-weight: 700; }
+  .print-page-sub { font-size: 12px; color: #666; }
+
+  /* Print page footer */
+  .print-page-footer { text-align: center; font-size: 10px; color: #999; margin-top: 8px; padding-top: 6px; border-top: 1px solid #ddd; }
+
+  /* Print legend */
+  .print-legend { font-size: 10px; color: #999; margin-top: 6px; }
+
+  /* Section card no border on print */
+  .section-card { border: none !important; padding: 0 !important; }
+
+  /* A4 margins */
+  @page { size: A4; margin: 12mm 10mm; }
 }
 
 /* ═══ BC DASHBOARD ═══ */
