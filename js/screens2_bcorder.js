@@ -1,9 +1,9 @@
 /**
- * Version 1.5.3 | 15 MAR 2026 | Siam Palette Group
+ * Version 1.5.4 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Print multi-page support (30 rows/page, repeated headers, page numbers)
+ * Fix: Product search focus loss + Print multi-page
  * ═══════════════════════════════════════════
  */
 
@@ -797,14 +797,25 @@ const Scr2 = (() => {
   function renderProducts() {
     _prodTab = 'active'; _prodSearch = ''; _prodSectionFilter = 'all';
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">\u2190</button><div class="toolbar-title">Manage Products</div></div>
-      <div class="content" id="prodListContent"><div class="skel skel-card"></div><div class="skel skel-card"></div></div>`;
+      <div class="content" id="prodListContent">
+        <div class="section-card" style="margin-bottom:10px">
+          <div id="prodTabs"></div>
+          <input class="search-input" style="max-width:400px;margin-bottom:8px" placeholder="\uD83D\uDD0D Search products..." id="prodSearchInp" oninput="Scr2.filterProds(this.value)">
+          <div id="prodSecChips"></div>
+          <div id="prodSortNote"></div>
+        </div>
+        <div class="section-card" id="prodResults"><div class="skel skel-card"></div></div>
+      </div>`;
   }
 
   function fillProducts() {
-    const el = document.getElementById('prodListContent');
-    if (!el) return;
+    const tabsEl = document.getElementById('prodTabs');
+    const chipsEl = document.getElementById('prodSecChips');
+    const noteEl = document.getElementById('prodSortNote');
+    const resEl = document.getElementById('prodResults');
+    if (!resEl) return;
     const prods = App.S.adminProducts;
-    if (!prods) { el.innerHTML = '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E01\u0E33\u0E25\u0E31\u0E07\u0E42\u0E2B\u0E25\u0E14...</div></div>'; return; }
+    if (!prods) { resEl.innerHTML = '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E01\u0E33\u0E25\u0E31\u0E07\u0E42\u0E2B\u0E25\u0E14...</div></div>'; return; }
 
     const active = prods.filter(p => p.is_active);
     const inactive = prods.filter(p => !p.is_active);
@@ -820,22 +831,28 @@ const Scr2 = (() => {
     if (_prodSectionFilter !== 'all') filtered = filtered.filter(p => p.section_id === _prodSectionFilter);
     if (_prodSearch) { const s = _prodSearch.toLowerCase(); filtered = filtered.filter(p => (p.product_name || '').toLowerCase().includes(s)); }
 
-    const tabs = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <div class="chip${_prodTab === 'active' ? ' active' : ''}" onclick="Scr2.setProdTab('active')">Active (${active.length})</div>
-      <div class="chip${_prodTab === 'inactive' ? ' active' : ''}" onclick="Scr2.setProdTab('inactive')">Inactive (${inactive.length})</div>
-      <div style="flex:1"></div>
-      <button class="btn btn-primary" style="padding:6px 16px;font-size:12px" onclick="App.go('prod-edit',{id:'new'})">+ Add</button>
-    </div>`;
+    // Update tabs (only when not from search)
+    if (tabsEl) {
+      tabsEl.innerHTML = `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <div class="chip${_prodTab === 'active' ? ' active' : ''}" onclick="Scr2.setProdTab('active')">Active (${active.length})</div>
+        <div class="chip${_prodTab === 'inactive' ? ' active' : ''}" onclick="Scr2.setProdTab('inactive')">Inactive (${inactive.length})</div>
+        <div style="flex:1"></div>
+        <button class="btn btn-primary" style="padding:6px 16px;font-size:12px" onclick="App.go('prod-edit',{id:'new'})">+ Add</button>
+      </div>`;
+    }
 
-    const search = `<input class="search-input" style="max-width:400px;margin-bottom:8px" placeholder="\uD83D\uDD0D Search products..." value="${App.esc(_prodSearch)}" oninput="Scr2.filterProds(this.value)">`;
+    // Update section chips
+    if (chipsEl) {
+      chipsEl.innerHTML = `<div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
+        <div class="chip${_prodSectionFilter === 'all' ? ' active' : ''}" onclick="Scr2.setProdSection('all')">All</div>
+        ${sortedSecs.map(s => `<div class="chip${_prodSectionFilter === s ? ' active' : ''}" onclick="Scr2.setProdSection('${s}')">${App.esc(s)}</div>`).join('')}
+      </div>`;
+    }
 
-    const secChips = `<div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
-      <div class="chip${_prodSectionFilter === 'all' ? ' active' : ''}" onclick="Scr2.setProdSection('all')">All</div>
-      ${sortedSecs.map(s => `<div class="chip${_prodSectionFilter === s ? ' active' : ''}" onclick="Scr2.setProdSection('${s}')">${App.esc(s)}</div>`).join('')}
-    </div>`;
+    // Sort note
+    if (noteEl) noteEl.innerHTML = `<div style="font-size:10px;color:var(--t4);margin-bottom:2px">Sort: A-Z by product name \u00B7 ${filtered.length} items</div>`;
 
-    const sortNote = `<div style="font-size:10px;color:var(--t4);margin-bottom:10px">Sort: A-Z by product name \u00B7 ${filtered.length} items</div>`;
-
+    // Product list (only this part re-renders on search)
     let cards = '';
     if (!filtered.length) {
       cards = '<div class="empty"><div class="empty-icon">\uD83D\uDD0D</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32</div></div>';
@@ -850,12 +867,38 @@ const Scr2 = (() => {
         </div>`;
       }).join('') + '</div>';
     }
-
-    el.innerHTML = `<div class="section-card" style="margin-bottom:10px">${tabs}${search}${secChips}${sortNote}</div><div class="section-card">${cards}</div>`;
+    resEl.innerHTML = cards;
   }
 
   function setProdTab(tab) { _prodTab = tab; _prodSectionFilter = 'all'; fillProducts(); }
-  function filterProds(val) { _prodSearch = val; fillProducts(); }
+  function filterProds(val) {
+    _prodSearch = val;
+    // Only update results + sort note — search input stays untouched
+    const resEl = document.getElementById('prodResults');
+    const noteEl = document.getElementById('prodSortNote');
+    if (!resEl || !App.S.adminProducts) return;
+
+    const list = _prodTab === 'active' ? App.S.adminProducts.filter(p => p.is_active) : App.S.adminProducts.filter(p => !p.is_active);
+    let filtered = list;
+    if (_prodSectionFilter !== 'all') filtered = filtered.filter(p => p.section_id === _prodSectionFilter);
+    if (_prodSearch) { const s = _prodSearch.toLowerCase(); filtered = filtered.filter(p => (p.product_name || '').toLowerCase().includes(s)); }
+
+    if (noteEl) noteEl.innerHTML = `<div style="font-size:10px;color:var(--t4);margin-bottom:2px">Sort: A-Z by product name \u00B7 ${filtered.length} items</div>`;
+
+    if (!filtered.length) {
+      resEl.innerHTML = '<div class="empty"><div class="empty-icon">\uD83D\uDD0D</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32</div></div>';
+    } else {
+      resEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:4px">' + filtered.map(p => {
+        const catName = (App.S.categories.find(c => c.cat_id === p.category_id) || {}).cat_name || p.category_id;
+        const stsBg = p.is_active ? 'background:var(--green-bg);color:var(--green)' : 'background:var(--bg3);color:var(--t3)';
+        return `<div style="padding:12px;border:1px solid var(--bd2);border-radius:var(--rd);background:var(--bg);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="App.go('prod-edit',{id:'${p.product_id}'})">
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">${App.esc(p.product_name)}</div><div style="font-size:10px;color:var(--t3)">${App.esc(catName)} \u00B7 ${App.esc(p.section_id)} \u00B7 ${App.esc(p.unit)} \u00B7 Min ${p.min_order || 1}</div></div>
+          <span class="sts" style="${stsBg}">${p.is_active ? 'Active' : 'Hidden'}</span>
+          <span>\u270F\uFE0F</span>
+        </div>`;
+      }).join('') + '</div>';
+    }
+  }
   function setProdSection(sec) { _prodSectionFilter = sec; fillProducts(); }
 
   // ═══ PRODUCT EDIT ═══
