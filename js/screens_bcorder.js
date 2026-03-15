@@ -1,9 +1,9 @@
 /**
- * Version 1.6.4 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.6.5 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: Stock validation ALL products + Stock History UI + dashboard quick menu
+ * Fix: Stock History accordion collapse + date filter always visible
  * ═══════════════════════════════════════════
  */
 
@@ -809,8 +809,7 @@ const Scr = (() => {
     _shShowCount = 10;
 
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Stock History</div></div>
-      <div style="padding:6px 14px;cursor:pointer;font-size:12px;color:var(--acc);font-weight:600" onclick="document.getElementById('shDateBar').style.display=document.getElementById('shDateBar').style.display==='none'?'flex':'none'">📅 ตั้งค่าช่วงวัน ▾</div>
-      <div class="order-date-bar" id="shDateBar" style="display:none">
+      <div class="order-date-bar">
         <span class="date-label">📅 Delivery:</span>
         <input type="date" class="date-inp" value="${_shDateFrom}" onchange="Scr.setShDate('from',this.value)">
         <span style="color:var(--t4)">→</span>
@@ -842,32 +841,37 @@ const Scr = (() => {
       orderMap[h.order_id].items.push(h);
     });
 
-    // Render grouped by order
     let html = '<div style="font-size:11px;color:var(--t3);margin-bottom:8px">' + orderGroups.length + ' orders · ' + all.length + ' records</div>';
 
     const visible = orderGroups.slice(0, _shShowCount);
     const hasMore = orderGroups.length > _shShowCount;
 
-    visible.forEach(grp => {
-      // Sort items A-Z within each order
+    visible.forEach((grp, idx) => {
       grp.items.sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
-
-      // Order header
       const orderDate = grp.created_at ? grp.created_at.substring(11, 16) : '';
-      html += `<div class="section-card" style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:13px;font-weight:700;color:var(--acc);cursor:pointer;text-decoration:underline" onclick="App.go('order-detail',{id:'${App.esc(grp.order_id)}'})">${App.esc(grp.order_id)}</span>
-          <span style="font-size:11px;color:var(--t3)">ส่ง ${App.fmtDateThai(grp.delivery_date)}${orderDate ? ' · ' + orderDate : ''}</span>
-        </div>`;
+      const itemCount = grp.items.length;
+      const orderedCount = grp.items.filter(h => h.order_qty > 0).length;
 
-      // Table
-      html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="border-bottom:1.5px solid var(--bd)">
-          <th style="text-align:left;padding:5px 8px;font-weight:600;font-size:11px">Product</th>
-          <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Quota</th>
-          <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Stock</th>
-          <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Order</th>
-        </tr></thead><tbody>`;
+      // Accordion header (collapsed by default)
+      html += `<div class="section-card" style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:2px 0" onclick="Scr.toggleShGroup('shGrp-${idx}')">
+          <div>
+            <span style="font-size:13px;font-weight:700;color:var(--acc)">${App.esc(grp.order_id)}</span>
+            <span style="font-size:11px;color:var(--t3);margin-left:8px">${itemCount} รายการ · สั่ง ${orderedCount}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:var(--t3)">ส่ง ${App.fmtDateThai(grp.delivery_date)}${orderDate ? ' · ' + orderDate : ''}</span>
+            <span id="shArr-${idx}" style="font-size:12px;color:var(--t4)">▸</span>
+          </div>
+        </div>
+        <div id="shGrp-${idx}" style="display:none;margin-top:8px">
+          <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="border-bottom:1.5px solid var(--bd)">
+              <th style="text-align:left;padding:5px 8px;font-weight:600;font-size:11px">Product</th>
+              <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Quota</th>
+              <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Stock</th>
+              <th style="text-align:center;padding:5px 4px;font-weight:600;font-size:11px">Order</th>
+            </tr></thead><tbody>`;
 
       grp.items.forEach(h => {
         const isZeroBoth = h.stock_on_hand === 0 && h.order_qty === 0;
@@ -882,7 +886,9 @@ const Scr = (() => {
         </tr>`;
       });
 
-      html += '</tbody></table></div></div>';
+      html += '</tbody></table></div>';
+      html += `<div style="text-align:right;margin-top:6px"><span style="font-size:11px;color:var(--acc);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();App.go('order-detail',{id:'${App.esc(grp.order_id)}'})">ดู Order →</span></div>`;
+      html += '</div></div>';
     });
 
     if (hasMore) {
@@ -890,6 +896,20 @@ const Scr = (() => {
     }
 
     el.innerHTML = html;
+  }
+
+  function toggleShGroup(id) {
+    const body = document.getElementById(id);
+    if (!body) return;
+    const idx = id.replace('shGrp-', '');
+    const arr = document.getElementById('shArr-' + idx);
+    if (body.style.display === 'none') {
+      body.style.display = 'block';
+      if (arr) arr.textContent = '▾';
+    } else {
+      body.style.display = 'none';
+      if (arr) arr.textContent = '▸';
+    }
   }
 
   function setShDate(which, val) {
@@ -1553,7 +1573,7 @@ const Scr = (() => {
     renderWaste, fillWaste, sortWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
     showWasteForm, saveWaste, showWasteEdit, saveWasteEdit, confirmDeleteWaste, doDeleteWaste,
     renderReturns, fillReturns, sortReturns, setRetDate, setRetDatePreset, showMoreReturns,
-    renderStockHistory, fillStockHistory, setShDate, setShDatePreset, showMoreSh,
+    renderStockHistory, fillStockHistory, setShDate, setShDatePreset, showMoreSh, toggleShGroup,
     showReturnDetail, showReturnForm, saveReturn, showReturnEdit, saveReturnEdit,
   };
 })();
