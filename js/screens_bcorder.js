@@ -1,9 +1,9 @@
 /**
- * Version 1.6.6 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.6.7 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: allStock saves ALL products + edit popup stock field + accordion
+ * Fix: Submit syncs stock_on_hand from stockInputs into cart items
  * ═══════════════════════════════════════════
  */
 
@@ -438,16 +438,28 @@ const Scr = (() => {
     btn.disabled = true;
     btn.textContent = 'กำลังส่ง...';
 
-    const items = App.S.cart.map(c => ({
-      product_id: c.product_id,
-      qty: c.qty,
-      is_urgent: c.is_urgent,
-      note: c.note || '',
-      stock_on_hand: c.stock_on_hand,
-    }));
+    // Sync stock_on_hand from stockInputs into cart items before submit
+    const sp = App.getStockPoints();
+    const items = App.S.cart.map(c => {
+      let stockVal = c.stock_on_hand;
+      const si = App.S.stockInputs[c.product_id];
+      if (si !== undefined && si !== null && si !== '') {
+        if (sp === 2 && typeof si === 'object') {
+          stockVal = (parseFloat(si.s1) || 0) + (parseFloat(si.s2) || 0);
+        } else {
+          stockVal = parseFloat(si) || 0;
+        }
+      }
+      return {
+        product_id: c.product_id,
+        qty: c.qty,
+        is_urgent: c.is_urgent,
+        note: c.note || '',
+        stock_on_hand: stockVal,
+      };
+    });
 
     // Collect all stock for history — read from stockInputs (includes non-cart items)
-    const sp = App.getStockPoints();
     const allStock = App.S.products.map(p => {
       const si = App.S.stockInputs[p.product_id];
       let stockVal = null;
