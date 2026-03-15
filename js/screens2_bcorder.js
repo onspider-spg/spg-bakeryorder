@@ -1,9 +1,9 @@
 /**
- * Version 1.5.4 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.5.5 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Product search focus loss + Print multi-page
+ * Fix: Print section checkbox multi-select + remove urgent highlight
  * ═══════════════════════════════════════════
  */
 
@@ -364,13 +364,13 @@ const Scr2 = (() => {
 
   // ═══ PRINT CENTRE ═══
   let _printTab = 'sheet'; // 'sheet' | 'slip'
-  let _printSection = 'all';
+  let _printSections = new Set(); // empty = all selected
   let _printDate = '';
   let _slipStore = '';
 
   function renderPrint() {
     _printTab = 'sheet';
-    _printSection = 'all';
+    _printSections = new Set();
     _printDate = App.todaySydney();
     _slipStore = '';
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">\u2190</button><div class="toolbar-title">Print Centre</div></div>
@@ -395,13 +395,14 @@ const Scr2 = (() => {
       <input class="inp" type="date" value="${_printDate}" style="width:auto;font-size:12px;padding:6px 10px" onchange="Scr2.setPrintDate(this.value)">
     </div>`;
 
-    // Section chips
+    // Section checkboxes (multi-select)
     const secs = new Set();
     (d.products || []).forEach(p => { if (p.section_id) secs.add(p.section_id); });
     const sorted = [...secs].sort();
-    const secChips = `<div style="display:flex;gap:5px;flex-wrap:wrap">
-      <div class="chip${_printSection === 'all' ? ' active' : ''}" onclick="Scr2.setPrintSection('all')">All</div>
-      ${sorted.map(s => `<div class="chip${_printSection === s ? ' active' : ''}" onclick="Scr2.setPrintSection('${s}')">${App.esc(s)}</div>`).join('')}
+    const allChecked = _printSections.size === 0;
+    const secChips = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" ${allChecked ? 'checked' : ''} onchange="Scr2.togglePrintSecAll(this.checked)"> All</label>
+      ${sorted.map(s => `<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" ${allChecked || _printSections.has(s) ? 'checked' : ''} onchange="Scr2.togglePrintSec('${s}',this.checked)"> ${App.esc(s)}</label>`).join('')}
     </div>`;
 
     // Controls card (white background section — hidden on print)
@@ -423,14 +424,14 @@ const Scr2 = (() => {
 
   function renderProductionSheet(d) {
     let prods = d.products || [];
-    if (_printSection !== 'all') prods = prods.filter(p => p.section_id === _printSection);
+    if (_printSections.size > 0) prods = prods.filter(p => _printSections.has(p.section_id));
     if (!prods.length) return '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E21\u0E35\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23</div></div>';
 
     const stores = d.stores || [];
     const orderIds = (d.orders || []).map(o => o.order_id);
     const ROWS_PER_PAGE = 30;
     const totalPages = Math.ceil(prods.length / ROWS_PER_PAGE);
-    const sectionLabel = _printSection === 'all' ? 'ALL' : _printSection.toUpperCase();
+    const sectionLabel = _printSections.size === 0 ? 'ALL' : [..._printSections].join(', ').toUpperCase();
     const orderStr = orderIds.length > 3 ? orderIds.slice(0, 3).join(', ') + '...' : orderIds.join(', ');
 
     // ─── Helper: build table header row ───
@@ -438,8 +439,7 @@ const Scr2 = (() => {
 
     // ─── Helper: build one product row ───
     function prodRow(p) {
-      const isUrg = p.urgent;
-      return `<tr${isUrg ? ' style="background:#fff3cd"' : ''}>
+      return `<tr>
         <td class="ptbl-name"><b>${App.esc(p.product_name)}</b></td>
         <td><b>${p.total}</b></td>
         ${stores.map(s => { const sv = p.stores[s]; if (!sv) return '<td>\u2014</td>'; return '<td>' + sv.qty + (sv.urgent ? '*' : '') + '</td>'; }).join('')}
@@ -484,7 +484,7 @@ const Scr2 = (() => {
     if (!_slipStore) return '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E23\u0E49\u0E32\u0E19</div></div>';
 
     let prods = (d.products || []).filter(p => p.stores[_slipStore]);
-    if (_printSection !== 'all') prods = prods.filter(p => p.section_id === _printSection);
+    if (_printSections.size > 0) prods = prods.filter(p => _printSections.has(p.section_id));
     if (!prods.length) return '<div class="empty"><div class="empty-icon">\uD83D\uDCE6</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E21\u0E35\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23\u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A\u0E23\u0E49\u0E32\u0E19\u0E19\u0E35\u0E49</div></div>';
 
     // Group by section
@@ -556,7 +556,15 @@ const Scr2 = (() => {
   }
 
   function setPrintTab(tab) { _printTab = tab; fillPrint(); }
-  function setPrintSection(sec) { _printSection = sec; fillPrint(); }
+  function togglePrintSec(sec, checked) {
+    if (checked) { _printSections.add(sec); } else { _printSections.delete(sec); }
+    // If all unchecked → treat as "all"
+    fillPrint();
+  }
+  function togglePrintSecAll(checked) {
+    _printSections = new Set(); // empty = all
+    fillPrint();
+  }
   function setSlipStore(sid) { _slipStore = sid; fillPrint(); }
   function setPrintDate(val) { _printDate = val; App.loadPrintCentre(val); }
 
@@ -1090,7 +1098,7 @@ const Scr2 = (() => {
     renderAccept, fillAccept, doAccept, showRejectDialog, doReject,
     renderFulfil, fillFulfil, fulfilFull, fulfilPartial, setFulfilQty, setFulfilNote,
     saveFulfilment, doMarkDelivered,
-    renderPrint, fillPrint, setPrintTab, setPrintSection, setSlipStore, setPrintDate,
+    renderPrint, fillPrint, setPrintTab, togglePrintSec, togglePrintSecAll, setSlipStore, setPrintDate,
     renderBCReturns, fillBCReturns, doReceive, doResolve, showBCRetDetail,
     setBCRetDate, setBCRetPreset, setBCRetFilter, showMoreBCRet,
     renderProducts, fillProducts, setProdTab, filterProds, setProdSection,

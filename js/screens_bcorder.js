@@ -1,9 +1,9 @@
 /**
- * Version 1.6.3 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.6.4 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: Waste dropdown (Expired/Damaged) + Return issue types + auto-waste reason
+ * Fix: Stock validation ALL products + Stock History UI + dashboard quick menu
  * ═══════════════════════════════════════════
  */
 
@@ -49,6 +49,7 @@ const Scr = (() => {
           : dCard('📝', 'Create Order', "App.goToBrowse()", true)}
         ${dCard('📋', 'View Orders', "App.go('orders')")}
         ${dCard('📊', 'Set Quota', "App.go('quota')")}
+        ${dCard('📈', 'Stock History', "App.go('stock-history')")}
       </div>
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--t3);margin-bottom:6px">Records</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -401,22 +402,21 @@ const Scr = (() => {
     App.go('cart'); // re-render cart
   }
 
-  // ─── Stock validation: all cart items must have stock filled ───
+  // ─── Stock validation: ALL products must have stock filled before submit ───
   function validateStockBeforeSubmit() {
     const missing = [];
     const sp = App.getStockPoints();
-    App.S.cart.forEach(c => {
-      const si = App.S.stockInputs[c.product_id];
+    const allProds = App.S.products || [];
+    allProds.forEach(p => {
+      const si = App.S.stockInputs[p.product_id];
       if (si === undefined || si === null) {
-        missing.push(c.product_name);
+        missing.push(p.product_name);
         return;
       }
       if (sp === 2 && typeof si === 'object') {
-        // 2-point: at least one of s1/s2 must be filled
-        if (si.s1 === '' && si.s2 === '') missing.push(c.product_name);
+        if (si.s1 === '' && si.s2 === '') missing.push(p.product_name);
       } else {
-        // 1-point: must not be empty string
-        if (String(si) === '') missing.push(c.product_name);
+        if (String(si) === '') missing.push(p.product_name);
       }
     });
     return { valid: missing.length === 0, missing };
@@ -797,7 +797,7 @@ const Scr = (() => {
   // ═══ STOCK HISTORY ═══
   let _shDateFrom = '';
   let _shDateTo = '';
-  let _shShowCount = 20;
+  let _shShowCount = 10;
 
   function renderStockHistory() {
     const y = App.sydneyNow(); y.setDate(y.getDate() - 1);
@@ -806,10 +806,11 @@ const Scr = (() => {
     _shDateTo = App.S.stockHistDateTo || App.fmtDate(t);
     App.S.stockHistDateFrom = _shDateFrom;
     App.S.stockHistDateTo = _shDateTo;
-    _shShowCount = 20;
+    _shShowCount = 10;
 
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">←</button><div class="toolbar-title">Stock History</div></div>
-      <div class="order-date-bar">
+      <div style="padding:6px 14px;cursor:pointer;font-size:12px;color:var(--acc);font-weight:600" onclick="document.getElementById('shDateBar').style.display=document.getElementById('shDateBar').style.display==='none'?'flex':'none'">📅 ตั้งค่าช่วงวัน ▾</div>
+      <div class="order-date-bar" id="shDateBar" style="display:none">
         <span class="date-label">📅 Delivery:</span>
         <input type="date" class="date-inp" value="${_shDateFrom}" onchange="Scr.setShDate('from',this.value)">
         <span style="color:var(--t4)">→</span>
@@ -912,7 +913,7 @@ const Scr = (() => {
     App.loadStockHistory();
   }
 
-  function showMoreSh() { _shShowCount += 20; fillStockHistory(); }
+  function showMoreSh() { _shShowCount += 10; fillStockHistory(); }
 
   // ═══ SET QUOTA ═══
   const DAYS = ['จ','อ','พ','พฤ','ศ','ส','อา'];

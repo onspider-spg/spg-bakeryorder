@@ -1,5 +1,5 @@
 /**
- * Version 2.2.7 | 16 MAR 2026 | Siam Palette Group
+ * Version 2.2.8 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -510,7 +510,7 @@ const App = (() => {
     }
   }
 
-  function enterEditMode(orderId) {
+  async function enterEditMode(orderId) {
     const data = S.currentOrder;
     if (!data || data.order.order_id !== orderId) return;
     const o = data.order;
@@ -529,10 +529,20 @@ const App = (() => {
       _auto: false,
     }));
 
-    // Restore stockInputs from all items (including stock=0)
+    // Fetch ALL stock history for this order (includes products not ordered)
     S.stockInputs = {};
+    try {
+      const resp = await API.getStockHistory({ order_id: orderId });
+      if (resp.success && resp.data) {
+        resp.data.forEach(h => {
+          S.stockInputs[h.product_id] = String(h.stock_on_hand);
+        });
+      }
+    } catch (e) { console.error('Edit mode stock fetch:', e); }
+
+    // Fallback: fill from order items if stock history missing
     items.forEach(i => {
-      if (i.stock_on_hand != null) {
+      if (i.stock_on_hand != null && !S.stockInputs[i.product_id]) {
         S.stockInputs[i.product_id] = String(i.stock_on_hand);
       }
     });
@@ -584,6 +594,7 @@ const App = (() => {
         { r: 'browse', lbl: 'Create Order', perm: 'fn_create_order', action: 'App.goToBrowse()' },
         { r: 'orders', lbl: 'View Orders', perm: 'fn_view_own_orders' },
         { r: 'quota',  lbl: 'Set Quota',   perm: 'fn_create_order' },
+        { r: 'stock-history', lbl: 'Stock History', perm: 'fn_create_order' },
       ];
       html += sdGroup('orders', '⊞', 'Orders', orderItems.filter(i => !i.perm || hasPerm(i.perm)).map(
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="${i.action || "App.go('" + i.r + "')"}">${i.lbl}</div>`
@@ -591,7 +602,6 @@ const App = (() => {
       const recordItems = [
         { r: 'waste',         lbl: 'Waste Log',      perm: 'fn_view_waste' },
         { r: 'returns',       lbl: 'Returns',         perm: 'fn_view_returns' },
-        { r: 'stock-history', lbl: 'Stock History',    perm: 'fn_create_order' },
       ];
       html += sdGroup('records', '▤', 'Records', recordItems.filter(i => !i.perm || hasPerm(i.perm)).map(
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
@@ -642,7 +652,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2.7 | 16 Mar 2026</div>
+      <div class="sd-version">v2.2.8 | 16 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -687,10 +697,10 @@ const App = (() => {
       if (hasPerm('fn_create_order')) html += `<div class="mob-sd-item" data-route="browse" onclick="App.closeSidebar();App.goToBrowse()"><span class="sd-item-icon">⊞</span>Create Order</div>`;
       if (hasPerm('fn_view_own_orders')) html += mobItem('orders', '⊞', 'View Orders');
       if (hasPerm('fn_create_order')) html += mobItem('quota', '⊞', 'Set Quota');
+      if (hasPerm('fn_create_order')) html += mobItem('stock-history', '⊞', 'Stock History');
       html += '<div style="height:4px"></div><div class="mob-sidebar-section">Records</div>';
       if (hasPerm('fn_view_waste')) html += mobItem('waste', '▤', 'Waste Log');
       if (hasPerm('fn_view_returns')) html += mobItem('returns', '▤', 'Returns');
-      if (hasPerm('fn_create_order')) html += mobItem('stock-history', '▤', 'Stock History');
     } else {
       // BC role
       html += '<div style="height:8px"></div><div class="mob-sidebar-section">Orders</div>';
@@ -722,7 +732,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.7</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.8</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
