@@ -1,9 +1,9 @@
 /**
- * Version 1.6.5 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.6.6 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: Stock History accordion collapse + date filter always visible
+ * Fix: allStock saves ALL products + edit popup stock field + accordion
  * ═══════════════════════════════════════════
  */
 
@@ -446,17 +446,26 @@ const Scr = (() => {
       stock_on_hand: c.stock_on_hand,
     }));
 
-    // Collect all stock for history
+    // Collect all stock for history — read from stockInputs (includes non-cart items)
+    const sp = App.getStockPoints();
     const allStock = App.S.products.map(p => {
+      const si = App.S.stockInputs[p.product_id];
+      let stockVal = null;
+      if (si !== undefined && si !== null && si !== '') {
+        if (sp === 2 && typeof si === 'object') {
+          stockVal = (parseFloat(si.s1) || 0) + (parseFloat(si.s2) || 0);
+        } else {
+          stockVal = parseFloat(si) || 0;
+        }
+      }
       const cart = App.getCartItem(p.product_id);
-      const quota = App.S.quotas[p.product_id] || 0;
       return {
         product_id: p.product_id,
-        stock_on_hand: cart?.stock_on_hand || 0,
-        quota_qty: quota,
+        stock_on_hand: stockVal != null ? stockVal : 0,
+        quota_qty: App.S.quotas[p.product_id] || 0,
         order_qty: cart?.qty || 0,
       };
-    }).filter(s => s.stock_on_hand > 0 || s.order_qty > 0);
+    }).filter(s => App.S.stockInputs[s.product_id] !== undefined);
 
     try {
       const isEditMode = !!App.S.editingOrderId;
@@ -717,8 +726,8 @@ const Scr = (() => {
       <div class="popup-header"><div class="popup-title">แก้ไข — ${App.esc(item.product_name)}</div><button class="popup-close" onclick="App.closeDialog()">✕</button></div>
       <div style="padding:10px 14px;background:var(--bg3);border-radius:var(--rd);margin-bottom:12px;font-size:12px">
         <div style="display:flex;justify-content:space-between"><span style="color:var(--t3)">เดิม</span><span style="font-weight:700">${item.qty_ordered} ${App.esc(item.unit)}</span></div>
-        ${item.stock_on_hand != null ? '<div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:var(--t3)">สต็อก</span><span style="font-weight:600;color:var(--blue)">' + item.stock_on_hand + '</span></div>' : ''}
       </div>
+      <div class="fg"><label class="lb">สต็อก</label><input class="inp" type="number" id="editStock" value="${item.stock_on_hand != null ? item.stock_on_hand : ''}" min="0" step="0.1" style="width:120px;font-size:16px;font-weight:700;text-align:center" placeholder="—"></div>
       <div class="fg"><label class="lb">จำนวนใหม่ *</label><input class="inp" type="number" id="editQty" value="${item.qty_ordered}" min="0" style="width:120px;font-size:16px;font-weight:700;text-align:center"><div style="font-size:10px;color:var(--t4);margin-top:4px">ใส่ 0 = ลบรายการ</div></div>
       <div class="fg"><label class="lb">Urgent</label><div style="display:flex;gap:8px"><div class="chip${item.is_urgent ? ' active' : ''}" id="editUrg1" onclick="document.getElementById('editUrg1').classList.add('active');document.getElementById('editUrg0').classList.remove('active')">⚡</div><div class="chip${!item.is_urgent ? ' active' : ''}" id="editUrg0" onclick="document.getElementById('editUrg0').classList.add('active');document.getElementById('editUrg1').classList.remove('active')">ปกติ</div></div></div>
       <div class="fg"><label class="lb">Note</label><input class="inp" id="editNote" value="${App.esc(item.item_note || '')}"></div>
@@ -734,18 +743,20 @@ const Scr = (() => {
     const qty = parseInt(document.getElementById('editQty')?.value) || 0;
     const isUrg = document.getElementById('editUrg1')?.classList.contains('active') || false;
     const note = document.getElementById('editNote')?.value || '';
+    const stockRaw = document.getElementById('editStock')?.value;
+    const stockVal = stockRaw !== '' ? parseFloat(stockRaw) : null;
 
     try {
       const resp = await API.editOrder({
         order_id: orderId,
-        items: [{ item_id: itemId, qty, is_urgent: isUrg, note }],
+        items: [{ item_id: itemId, qty, is_urgent: isUrg, note, stock_on_hand: stockVal }],
       });
       if (resp.success) {
         App.closeDialog();
         App.toast(resp.message || '✅ แก้ไขแล้ว', 'success');
         // Update memory
         const item = App.S.currentOrder?.items?.find(i => i.item_id === itemId);
-        if (item) { item.qty_ordered = qty; item.is_urgent = isUrg; item.item_note = note; }
+        if (item) { item.qty_ordered = qty; item.is_urgent = isUrg; item.item_note = note; item.stock_on_hand = stockVal; }
         App.S._ordersLoaded = false; // force reload next time
         fillOrderDetail(); // re-render detail from memory
       } else {
