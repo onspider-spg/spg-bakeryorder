@@ -1,9 +1,9 @@
 /**
- * Version 1.5.7 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.5.8 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Append dept_id to store name in order/fulfilment/returns displays
+ * Fix: Fulfilment ✓/✗ toggle — click again to unselect
  * ═══════════════════════════════════════════
  */
 
@@ -246,9 +246,9 @@ const Scr2 = (() => {
 
     let actionHtml;
     if (isFull) {
-      actionHtml = `<div style="padding:6px 12px;border-radius:var(--rd);font-size:14px;font-weight:700;background:var(--green);color:#fff;min-width:38px;text-align:center">\u2713</div>`;
+      actionHtml = `<div style="padding:6px 12px;border-radius:var(--rd);font-size:14px;font-weight:700;background:var(--green);color:#fff;min-width:38px;text-align:center;cursor:pointer" onclick="Scr2.fulfilClear('${i.item_id}')">\u2713</div>`;
     } else if (isPartial) {
-      actionHtml = `<div style="padding:6px 12px;border-radius:var(--rd);font-size:14px;font-weight:700;background:var(--orange);color:#fff;min-width:38px;text-align:center">\u2717</div>`;
+      actionHtml = `<div style="padding:6px 12px;border-radius:var(--rd);font-size:14px;font-weight:700;background:var(--orange);color:#fff;min-width:38px;text-align:center;cursor:pointer" onclick="Scr2.fulfilClear('${i.item_id}')">\u2717</div>`;
     } else {
       actionHtml = `<div style="display:flex;gap:3px">
         <div style="padding:6px 12px;border-radius:var(--rd);font-size:14px;font-weight:700;background:var(--green);color:#fff;cursor:pointer;min-width:38px;text-align:center" onclick="Scr2.fulfilFull('${i.item_id}')">\u2713</div>
@@ -293,6 +293,16 @@ const Scr2 = (() => {
     const data = App.S.currentOrder;
     if (!data) return;
     _fulfilState[itemId] = { status: 'partial', qty_sent: 0, note: '' };
+    const el = document.getElementById('fulfilContent');
+    if (el) renderFulfilBody(el, data.order, data.items);
+  }
+
+  function fulfilClear(itemId) {
+    const data = App.S.currentOrder;
+    if (!data) return;
+    const item = data.items.find(i => i.item_id === itemId);
+    if (!item) return;
+    _fulfilState[itemId] = { status: '', qty_sent: item.qty_ordered, note: '' };
     const el = document.getElementById('fulfilContent');
     if (el) renderFulfilBody(el, data.order, data.items);
   }
@@ -1096,7 +1106,7 @@ const Scr2 = (() => {
   return {
     renderBCDashboard, fillBCDashboard,
     renderAccept, fillAccept, doAccept, showRejectDialog, doReject,
-    renderFulfil, fillFulfil, fulfilFull, fulfilPartial, setFulfilQty, setFulfilNote,
+    renderFulfil, fillFulfil, fulfilFull, fulfilPartial, fulfilClear, setFulfilQty, setFulfilNote,
     saveFulfilment, doMarkDelivered,
     renderPrint, fillPrint, setPrintTab, togglePrintSec, togglePrintSecAll, setSlipStore, setPrintDate,
     renderBCReturns, fillBCReturns, doReceive, doResolve, showBCRetDetail,
