@@ -1,9 +1,9 @@
 /**
- * Version 1.6.8 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.6.9 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: Waste Edit adds Note field
+ * Fix: Waste Edit adds Note field; order list/detail appends dept_id
  * ═══════════════════════════════════════════
  */
 
@@ -658,7 +658,7 @@ const Scr = (() => {
 
     return `<div class="ocard${isDone ? ' ocard-done' : ''}" style="border-left-color:${borderColor}" onclick="${onclick}">
       <div class="ocard-hd"><span class="ocard-id">${App.esc(o.order_id)}</span><span class="sts ${stsClass}">${o.status}</span></div>
-      <div class="ocard-sub">ส่ง ${App.fmtDateThai(o.delivery_date)} · ${App.esc(App.getStoreName(o.store_id))}</div>
+      <div class="ocard-sub">ส่ง ${App.fmtDateThai(o.delivery_date)} · ${App.esc(App.getStoreName(o.store_id))}${o.dept_id ? ' · ' + App.esc(o.dept_id) : ''}</div>
       <div class="ocard-items">${App.esc(summary)}</div>
     </div>`;
   }
@@ -700,7 +700,7 @@ const Scr = (() => {
           <div><div class="detail-label">วันสั่ง</div><div class="detail-val">${App.fmtDateThai(o.order_date)}</div></div>
           <div><div class="detail-label">วันส่ง</div><div class="detail-val">${App.fmtDateThai(o.delivery_date)}</div></div>
           <div><div class="detail-label">โดย</div><div class="detail-val">${App.esc(o.display_name)}</div></div>
-          <div><div class="detail-label">ร้าน</div><div class="detail-val">${App.esc(App.getStoreName(o.store_id))}</div></div>
+          <div><div class="detail-label">ร้าน</div><div class="detail-val">${App.esc(App.getStoreName(o.store_id))}${o.dept_id ? ' · ' + App.esc(o.dept_id) : ''}</div></div>
         </div>
         ${o.header_note ? '<div class="detail-note">📝 ' + App.esc(o.header_note) + '</div>' : ''}
       </div>

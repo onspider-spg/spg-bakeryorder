@@ -1,9 +1,9 @@
 /**
- * Version 1.5.6 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.5.7 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Remove fulfilment qty max cap — allow sending more than ordered
+ * Fix: Append dept_id to store name in order/fulfilment/returns displays
  * ═══════════════════════════════════════════
  */
 
@@ -102,7 +102,7 @@ const Scr2 = (() => {
 
     el.innerHTML = `
       <div style="padding:12px 16px;background:var(--red-bg);border-radius:var(--rd);margin-bottom:10px;font-size:12px;color:var(--red);font-weight:600">
-        ${App.esc(o.order_id)} \u00B7 ${App.esc(App.getStoreName(o.store_id))} \u00B7 ${App.esc(o.display_name || '')} \u00B7 \u0E2A\u0E48\u0E07 ${App.fmtDateThai(o.delivery_date)}${cutoffBadge}
+        ${App.esc(o.order_id)} \u00B7 ${App.esc(App.getStoreName(o.store_id))}${o.dept_id ? ' · ' + App.esc(o.dept_id) : ''} \u00B7 ${App.esc(o.display_name || '')} \u00B7 \u0E2A\u0E48\u0E07 ${App.fmtDateThai(o.delivery_date)}${cutoffBadge}
       </div>
       ${o.header_note ? '<div style="padding:8px 12px;background:var(--bg3);border-radius:var(--rd);margin-bottom:10px;font-size:12px">\uD83D\uDCDD ' + App.esc(o.header_note) + '</div>' : ''}
       <div style="font-size:11px;color:var(--t3);margin-bottom:6px">${items.length} \u0E23\u0E32\u0E22\u0E01\u0E32\u0E23</div>
@@ -218,7 +218,7 @@ const Scr2 = (() => {
         <span style="font-size:13px;font-weight:700;color:var(--acc)">${App.esc(o.order_id)}</span>
         <span class="sts ${stsClass}" style="margin-left:auto">${o.status}</span>
       </div>
-      <div style="font-size:12px;color:var(--t3);margin-bottom:6px">${App.esc(App.getStoreName(o.store_id))} \u00B7 ${App.esc(o.display_name || '')} \u00B7 \u0E2A\u0E48\u0E07 ${App.fmtDateThai(o.delivery_date)}</div>
+      <div style="font-size:12px;color:var(--t3);margin-bottom:6px">${App.esc(App.getStoreName(o.store_id))}${o.dept_id ? ' · ' + App.esc(o.dept_id) : ''} \u00B7 ${App.esc(o.display_name || '')} \u00B7 \u0E2A\u0E48\u0E07 ${App.fmtDateThai(o.delivery_date)}</div>
 
       <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px"><span>${doneCount} / ${total} items</span><span style="color:var(--green)">${pct}%</span></div>
       <div class="bc-progress-bar" style="margin-bottom:12px"><div class="bc-progress-fill" style="width:${pct}%"></div></div>
@@ -651,7 +651,7 @@ const Scr2 = (() => {
       Wasted:   'background:var(--red-bg);color:var(--red)',
     }[r.status] || '';
     const isDone = !['Reported', 'Received'].includes(r.status);
-    const store = App.getStoreName(r.store_id) || r.store_id;
+    const store = (App.getStoreName(r.store_id) || r.store_id) + (r.dept_id ? ' · ' + r.dept_id : '');
     const dateStr = App.fmtDateAU((r.created_at || '').substring(0, 10));
 
     let actions = '';

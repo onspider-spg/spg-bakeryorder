@@ -1,9 +1,9 @@
 /**
- * Version 2.3.2 | 16 MAR 2026 | Siam Palette Group
+ * Version 2.3.3 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: getStoreName removes location, shows store_name only
+ * Fix: getStoreName shows store_name only; sidebar appends dept_id
  * ═══════════════════════════════════════════
  */
 
@@ -700,7 +700,7 @@ const App = (() => {
     const s = S.session || {};
     const initials = getInitials(s.display_name);
     const isAdmin = S.sidebarRole === 'admin';
-    let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(initials)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}</div></div></div>`;
+    let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(initials)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}${s.dept_id && s.dept_id !== 'ALL' ? ' · ' + esc(s.dept_id) : ''}</div></div></div>`;
     html += mobItem('home', '◇', 'Dashboard');
 
     if (S.role === 'store') {
