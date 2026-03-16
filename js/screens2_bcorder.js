@@ -1,9 +1,9 @@
 /**
- * Version 1.5.8 | 17 MAR 2026 | Siam Palette Group
+ * Version 1.5.9 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Fulfilment ✓/✗ toggle — click again to unselect
+ * Fix: Fulfilment toggle + Print section checkbox logic
  * ═══════════════════════════════════════════
  */
 
@@ -567,8 +567,23 @@ const Scr2 = (() => {
 
   function setPrintTab(tab) { _printTab = tab; fillPrint(); }
   function togglePrintSec(sec, checked) {
-    if (checked) { _printSections.add(sec); } else { _printSections.delete(sec); }
-    // If all unchecked → treat as "all"
+    const d = App.S.printData;
+    const allSecs = new Set();
+    (d?.products || []).forEach(p => { if (p.section_id) allSecs.add(p.section_id); });
+
+    if (_printSections.size === 0 && !checked) {
+      // Was "All" → uncheck one section → init with all sections then remove
+      _printSections = new Set(allSecs);
+      _printSections.delete(sec);
+    } else if (checked) {
+      _printSections.add(sec);
+      // If all sections now selected → revert to empty (= All)
+      if (_printSections.size >= allSecs.size) _printSections = new Set();
+    } else {
+      _printSections.delete(sec);
+      // If none selected → revert to All
+      if (_printSections.size === 0) _printSections = new Set();
+    }
     fillPrint();
   }
   function togglePrintSecAll(checked) {
