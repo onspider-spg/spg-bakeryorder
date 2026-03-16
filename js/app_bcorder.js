@@ -1,9 +1,9 @@
 /**
- * Version 2.3.3 | 16 MAR 2026 | Siam Palette Group
+ * Version 2.3.4 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: getStoreName shows store_name only; sidebar appends dept_id
+ * Fix: Reports sidebar T1-T3 only
  * ═══════════════════════════════════════════
  */
 
@@ -636,16 +636,19 @@ const App = (() => {
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
       ).join(''));
 
-      // Reports group FIRST (perm-gated or admin)
-      const reportItems = [];
-      if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
-      if (isAdmin || hasPerm('fn_view_all_orders')) reportItems.push({ r: 'top-products', lbl: 'Top Products' });
-      if (isAdmin)                        reportItems.push({ r: 'cutoff',          lbl: 'Cutoff Violations' });
-      if (hasPerm('fn_view_audit_log'))   reportItems.push({ r: 'audit',           lbl: 'Audit Trail' });
-      if (reportItems.length) {
-        html += sdGroup('reports', '◈', 'Reports', reportItems.map(
-          i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
-        ).join(''));
+      // Reports group FIRST (T1-T3 only)
+      const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+      if (tl <= 3) {
+        const reportItems = [];
+        if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
+        if (isAdmin || hasPerm('fn_view_all_orders')) reportItems.push({ r: 'top-products', lbl: 'Top Products' });
+        if (isAdmin)                        reportItems.push({ r: 'cutoff',          lbl: 'Cutoff Violations' });
+        if (hasPerm('fn_view_audit_log'))   reportItems.push({ r: 'audit',           lbl: 'Audit Trail' });
+        if (reportItems.length) {
+          html += sdGroup('reports', '◈', 'Reports', reportItems.map(
+            i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
+          ).join(''));
+        }
       }
 
       // Admin group LAST (perm-gated)
@@ -721,14 +724,17 @@ const App = (() => {
       html += mobItem('waste', '▤', 'Waste Log');
       html += mobItem('bc-returns', '▤', 'Incoming Returns');
 
-      // Reports section FIRST
-      const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
-      if (hasAnyReport) {
-        html += '<div style="height:4px"></div><div class="mob-sidebar-section">Reports</div>';
-        if (hasPerm('fn_view_waste'))                      html += mobItem('waste-dashboard', '◈', 'Waste Dashboard');
-        if (isAdmin || hasPerm('fn_view_all_orders'))      html += mobItem('top-products',    '◈', 'Top Products');
-        if (isAdmin)                                       html += mobItem('cutoff',          '◈', 'Cutoff Violations');
-        if (hasPerm('fn_view_audit_log'))                  html += mobItem('audit',           '◈', 'Audit Trail');
+      // Reports section FIRST (T1-T3 only)
+      const tlMob = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+      if (tlMob <= 3) {
+        const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
+        if (hasAnyReport) {
+          html += '<div style="height:4px"></div><div class="mob-sidebar-section">Reports</div>';
+          if (hasPerm('fn_view_waste'))                      html += mobItem('waste-dashboard', '◈', 'Waste Dashboard');
+          if (isAdmin || hasPerm('fn_view_all_orders'))      html += mobItem('top-products',    '◈', 'Top Products');
+          if (isAdmin)                                       html += mobItem('cutoff',          '◈', 'Cutoff Violations');
+          if (hasPerm('fn_view_audit_log'))                  html += mobItem('audit',           '◈', 'Audit Trail');
+        }
       }
 
       // Admin section LAST
