@@ -1,9 +1,9 @@
 /**
- * Version 1.5.9 | 17 MAR 2026 | Siam Palette Group
+ * Version 1.6.0 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
- * Fix: Fulfilment toggle + Print section checkbox logic
+ * Fix: Fulfilment toggle + Print section checkbox + Show qty_sent in Print
  * ═══════════════════════════════════════════
  */
 
@@ -444,15 +444,20 @@ const Scr2 = (() => {
     const sectionLabel = _printSections.size === 0 ? 'ALL' : [..._printSections].join(', ').toUpperCase();
     const orderStr = orderIds.length > 3 ? orderIds.slice(0, 3).join(', ') + '...' : orderIds.join(', ');
 
+    // Check if any fulfil data exists
+    const hasFulfilData = prods.some(p => p.total_sent > 0);
+
     // ─── Helper: build table header row ───
-    const thRow = `<tr><th class="ptbl-name" style="text-align:left">Product</th><th>Total</th>${stores.map(s => '<th>' + App.esc(s) + '</th>').join('')}</tr>`;
+    const thRow = `<tr><th class="ptbl-name" style="text-align:left">Product</th><th>Total</th>${hasFulfilData ? '<th>Sent</th>' : ''}${stores.map(s => '<th>' + App.esc(s) + '</th>').join('')}</tr>`;
 
     // ─── Helper: build one product row ───
     function prodRow(p) {
+      const sentCell = hasFulfilData ? `<td>${p.total_sent > 0 ? p.total_sent + (p.total_sent < p.total ? '⚠' : '') : '\u2014'}</td>` : '';
       return `<tr>
         <td class="ptbl-name"><b>${App.esc(p.product_name)}</b></td>
         <td><b>${p.total}</b></td>
-        ${stores.map(s => { const sv = p.stores[s]; if (!sv) return '<td>\u2014</td>'; return '<td>' + sv.qty + (sv.urgent ? '*' : '') + '</td>'; }).join('')}
+        ${sentCell}
+        ${stores.map(s => { const sv = p.stores[s]; if (!sv) return '<td>\u2014</td>'; const sentInfo = sv.qty_sent > 0 && sv.qty_sent !== sv.qty ? ' \u2192 ' + sv.qty_sent : ''; return '<td>' + sv.qty + (sv.urgent ? '*' : '') + sentInfo + '</td>'; }).join('')}
       </tr>`;
     }
 
@@ -517,7 +522,7 @@ const Scr2 = (() => {
       lines.push({ type: 'section', label: sec.toUpperCase() });
       sections[sec].forEach(p => {
         const sv = p.stores[_slipStore];
-        lines.push({ type: 'item', name: p.product_name, qty: sv.qty, urgent: sv?.urgent });
+        lines.push({ type: 'item', name: p.product_name, qty: sv.qty, qty_sent: sv.qty_sent || 0, urgent: sv?.urgent });
       });
     }
 
@@ -527,7 +532,8 @@ const Scr2 = (() => {
         return '<div style="font-weight:700;margin:6px 0 2px;border-top:1px solid #eee;padding-top:4px">\u2550\u2550\u2550 ' + App.esc(ln.label) + ' \u2550\u2550\u2550</div>';
       }
       const star = ln.urgent ? '\u2B50 ' : '';
-      return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span>' + star + '<b>' + App.esc(ln.name) + '</b></span><span>' + ln.qty + ' \u2192 ___</span></div>';
+      const sentInfo = ln.qty_sent > 0 ? ' \u2192 ' + ln.qty_sent : '';
+      return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span>' + star + '<b>' + App.esc(ln.name) + '</b></span><span>' + ln.qty + sentInfo + ' \u2192 ___</span></div>';
     }
 
     // ─── Helper: slip header ───
