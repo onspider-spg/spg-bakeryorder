@@ -1,9 +1,9 @@
 /**
- * Version 1.6.7 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.6.8 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: Submit syncs stock_on_hand from stockInputs into cart items
+ * Fix: Waste Edit adds Note field
  * ═══════════════════════════════════════════
  */
 
@@ -1294,6 +1294,7 @@ const Scr = (() => {
         <option value="Expired"${w.reason === 'Expired' ? ' selected' : ''}>Expired</option>
         <option value="Damaged"${w.reason === 'Damaged' ? ' selected' : ''}>Damaged</option>
       </select></div>
+      <div class="fg"><label class="lb">หมายเหตุ</label><input class="inp" id="weNote" value="${App.esc(w.note || '')}" placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"></div>
       <div style="display:flex;gap:8px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="weSaveBtn" onclick="Scr.saveWasteEdit('${wasteId}')">💾 บันทึก</button></div>
     </div>`);
   }
@@ -1306,15 +1307,16 @@ const Scr = (() => {
     const qty = parseInt(document.getElementById('weQty')?.value) || 0;
     const reason = document.getElementById('weReason')?.value;
     const prodDate = document.getElementById('weProdDate')?.value || '';
+    const note = document.getElementById('weNote')?.value || '';
 
     try {
-      const resp = await API.editWaste({ waste_id: wasteId, quantity: qty, reason, production_date: prodDate });
+      const resp = await API.editWaste({ waste_id: wasteId, quantity: qty, reason, production_date: prodDate, note });
       if (resp.success) {
         App.closeDialog();
         App.toast('✅ แก้ไขแล้ว', 'success');
         // Update memory
         const w = App.S.wasteLog.find(x => x.waste_id === wasteId);
-        if (w) { w.quantity = qty; w.reason = reason; w.production_date = prodDate; }
+        if (w) { w.quantity = qty; w.reason = reason; w.production_date = prodDate; w.note = note; }
         fillWaste();
       } else {
         App.toast(resp.message || 'Error', 'error');
