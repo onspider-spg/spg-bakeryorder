@@ -1,5 +1,5 @@
 /**
- * Version 1.6.0 | 17 MAR 2026 | Siam Palette Group
+ * Version 1.6.1 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
@@ -532,8 +532,8 @@ const Scr2 = (() => {
         return '<div style="font-weight:700;margin:6px 0 2px;border-top:1px solid #eee;padding-top:4px">\u2550\u2550\u2550 ' + App.esc(ln.label) + ' \u2550\u2550\u2550</div>';
       }
       const star = ln.urgent ? '\u2B50 ' : '';
-      const sentInfo = ln.qty_sent > 0 ? ' \u2192 ' + ln.qty_sent : '';
-      return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span>' + star + '<b>' + App.esc(ln.name) + '</b></span><span>' + ln.qty + sentInfo + ' \u2192 ___</span></div>';
+      const fill = ln.qty_sent > 0 ? '__' + ln.qty_sent + '__' : '____';
+      return '<div style="display:flex;justify-content:space-between;padding:1px 0"><span>' + star + '<b>' + App.esc(ln.name) + '</b></span><span>' + ln.qty + ' \u2192 ' + fill + '</span></div>';
     }
 
     // ─── Helper: slip header ───
