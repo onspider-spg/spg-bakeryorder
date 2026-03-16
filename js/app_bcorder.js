@@ -1,5 +1,5 @@
 /**
- * Version 2.3.0 | 16 MAR 2026 | Siam Palette Group
+ * Version 2.3.1 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -789,7 +789,15 @@ const App = (() => {
 
   // ═══ HELPERS ═══
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-  function hasPerm(fnId) { const tl = parseInt((S.session?.tier_id || 'T9').replace('T', '')); return tl <= 2 || S.permissions.includes(fnId); }
+  function hasPerm(fnId) {
+    const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+    if (tl <= 2) return true;
+    if (S.permissions.includes(fnId)) return true;
+    // Implied permissions (match backend checkPerm line 141-142)
+    if (fnId === 'fn_edit_order' && S.permissions.includes('fn_create_order')) return true;
+    if (fnId === 'fn_cancel_order' && S.permissions.includes('fn_create_order')) return true;
+    return false;
+  }
   const _escEl = document.createElement('div');
   function esc(str) { if (str == null) return ''; _escEl.textContent = String(str); return _escEl.innerHTML; }
   function getInitials(name) {
