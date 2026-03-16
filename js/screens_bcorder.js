@@ -1,9 +1,9 @@
 /**
- * Version 1.7.0 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.7.1 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: BC staff InProgress → fulfil page (not order-detail)
+ * Fix: Edit Order button → "Add More" label
  * ═══════════════════════════════════════════
  */
 
@@ -708,7 +708,7 @@ const Scr = (() => {
       <div class="detail-section-title">รายการ (${items.length})</div>
       <div class="detail-items">${items.map(i => renderDetailItem(i, canEdit)).join('')}</div>
 
-      ${canEdit && App.S.role === 'store' ? '<div style="margin-top:14px"><button class="btn btn-primary btn-full" onclick="App.enterEditMode(\'' + o.order_id + '\')">✏️ Edit Order</button></div>' : ''}
+      ${canEdit && App.S.role === 'store' ? '<div style="margin-top:14px"><button class="btn btn-primary btn-full" onclick="App.enterEditMode(\'' + o.order_id + '\')">✏️ Add More</button></div>' : ''}
       ${canEdit ? '<div style="margin-top:8px"><button class="btn btn-danger btn-full" onclick="Scr.confirmCancel(\'' + o.order_id + '\')">🚫 ยกเลิก Order</button></div>' : ''}
       ${o.status === 'Cancelled' ? '<div style="margin-top:8px;font-size:12px;color:var(--red)">ยกเลิกเมื่อ ' + App.fmtDateThai(o.cancelled_at?.substring(0, 10)) + (o.cancel_reason ? ' — ' + App.esc(o.cancel_reason) : '') + '</div>' : ''}`;
   }
