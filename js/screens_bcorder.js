@@ -1,9 +1,9 @@
 /**
- * Version 1.6.9 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.7.0 | 16 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
- * Fix: Waste Edit adds Note field; order list/detail appends dept_id
+ * Fix: BC staff InProgress → fulfil page (not order-detail)
  * ═══════════════════════════════════════════
  */
 
@@ -646,11 +646,11 @@ const Scr = (() => {
     const stsClass = { Pending: 'sts-pending', Ordered: 'sts-ordered', InProgress: 'sts-ordered', Fulfilled: 'sts-fulfilled', Delivered: 'sts-fulfilled', Cancelled: 'sts-cancelled', Rejected: 'sts-cancelled' }[o.status] || '';
     const borderColor = { Pending: 'var(--red)', Ordered: 'var(--blue)', InProgress: 'var(--orange)', Fulfilled: 'var(--green)', Delivered: 'var(--green)' }[o.status] || 'var(--bd)';
 
-    // BC: Pending→accept, Ordered→fulfil; Store: always→order-detail
+    // BC: Pending→accept, Ordered/InProgress→fulfil; Store: always→order-detail
     let onclick;
     if (App.S.role === 'bc') {
       if (o.status === 'Pending') onclick = `App.go('accept',{id:'${o.order_id}'})`;
-      else if (o.status === 'Ordered') onclick = `App.go('fulfil',{id:'${o.order_id}'})`;
+      else if (o.status === 'Ordered' || o.status === 'InProgress') onclick = `App.go('fulfil',{id:'${o.order_id}'})`;
       else onclick = `App.go('order-detail',{id:'${o.order_id}'})`;
     } else {
       onclick = `App.go('order-detail',{id:'${o.order_id}'})`;
