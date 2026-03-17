@@ -667,13 +667,16 @@ html, body {
   .print-page { display: block !important; page-break-after: always; }
   .print-page:last-child { page-break-after: auto; }
 
-  /* Table rows avoid splitting across pages */
+  /* Compact table for print — fit 30 rows per A4 page */
+  .ptbl { font-size: 11px; }
+  .ptbl th, .ptbl td { padding: 3px 6px; }
+  .ptbl th { font-size: 10px; }
   .ptbl tr { page-break-inside: avoid; }
 
   /* Print page header */
-  .print-page-header { text-align: center; margin-bottom: 8px; }
-  .print-page-title { font-size: 16px; font-weight: 700; }
-  .print-page-sub { font-size: 12px; color: #666; }
+  .print-page-header { text-align: center; margin-bottom: 6px; }
+  .print-page-title { font-size: 14px; font-weight: 700; }
+  .print-page-sub { font-size: 10px; color: #666; }
 
   /* Print page footer */
   .print-page-footer { text-align: center; font-size: 10px; color: #999; margin-top: 8px; padding-top: 6px; border-top: 1px solid #ddd; }
