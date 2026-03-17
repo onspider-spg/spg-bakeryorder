@@ -1,5 +1,5 @@
 /**
- * Version 1.7.2 | 17 MAR 2026 | Siam Palette Group
+ * Version 1.7.3 | 18 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
@@ -779,10 +779,11 @@ const Scr = (() => {
 
   // ─── Change Delivery Date ───
   function showChangeDate(orderId, currentDate) {
+    const minDate = App.todaySydney();
     App.showDialog(`<div class="popup-sheet" style="width:340px">
       <div class="popup-title" style="margin-bottom:12px">📅 เปลี่ยนวันส่ง</div>
       <div style="font-size:12px;color:var(--t2);margin-bottom:12px">${App.esc(orderId)}</div>
-      <div class="fg"><label class="lb">วันส่งใหม่</label><input type="date" class="inp" id="newDeliveryDate" value="${currentDate}"></div>
+      <div class="fg"><label class="lb">วันส่งใหม่</label><input type="date" class="inp" id="newDeliveryDate" value="${currentDate}" min="${minDate}"></div>
       <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="changeDateBtn" onclick="Scr.doChangeDate('${orderId}')">บันทึก</button></div>
     </div>`);
   }
@@ -792,6 +793,7 @@ const Scr = (() => {
     if (!btn || btn.disabled) return;
     const newDate = document.getElementById('newDeliveryDate')?.value;
     if (!newDate) { App.toast('กรุณาเลือกวันส่ง', 'error'); return; }
+    if (newDate < App.todaySydney()) { App.toast('ไม่สามารถเลือกวันที่ผ่านมาแล้ว', 'error'); return; }
     btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
     try {
       const resp = await API.changeDeliveryDate({ order_id: orderId, delivery_date: newDate });

@@ -1,5 +1,5 @@
 /**
- * Version 2.3.5 | 17 MAR 2026 | Siam Palette Group
+ * Version 2.3.6 | 18 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -185,6 +185,9 @@ const App = (() => {
 
   async function loadBrowseData() {
     // Categories: already in memory from init_lite — no fetch needed
+
+    // Ensure deliveryDate is set (empty after browser refresh)
+    if (!S.deliveryDate) S.deliveryDate = tomorrowSydney();
 
     // Products + Stock + Quotas
     const d = new Date(S.deliveryDate + 'T00:00:00');
@@ -669,7 +672,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.3.5 | 17 Mar 2026</div>
+      <div class="sd-version">v2.3.6 | 18 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -752,7 +755,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.3.5</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.3.6</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
