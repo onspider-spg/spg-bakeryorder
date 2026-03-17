@@ -1,5 +1,5 @@
 /**
- * Version 1.3.4 | 15 MAR 2026 | Siam Palette Group
+ * Version 1.3.5 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
@@ -291,7 +291,6 @@ const Scr3 = (() => {
   }
 
   function setVisSection(sec) { _visSection = sec; fillVisibility(); }
-  function filterVis(val) { _visSearch = val; fillVisibility(); }
   // ─── Debounced version for search input (250ms) ───
   let _dfvTimer = null;
   function dFilterVis(val) { _visSearch = val; clearTimeout(_dfvTimer); _dfvTimer = setTimeout(fillVisibility, 250); }
@@ -745,7 +744,7 @@ const Scr3 = (() => {
   return {
     renderConfig, fillConfig, editConfig, saveConfig,
     renderDeptMapping, fillDeptMapping, editDeptMapping, saveDeptMapping,
-    renderVisibility, fillVisibility, setVisSection, filterVis, dFilterVis, toggleVis,
+    renderVisibility, fillVisibility, setVisSection, dFilterVis, toggleVis,
     renderAccess, fillAccess, setAccessData, togglePerm,
     renderWasteDashboard, fillWasteDashboard, setWDDate, setWDPreset,
     renderTopProducts, fillTopProducts, setTPDate, setTPPreset,

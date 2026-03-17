@@ -1,5 +1,5 @@
 /**
- * Version 1.7.1 | 16 MAR 2026 | Siam Palette Group
+ * Version 1.7.2 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
@@ -139,7 +139,7 @@ const Scr = (() => {
     const search = (App.S.productSearch || '').toLowerCase();
     const catFilter = App.S.productFilter;
     let filtered = prods;
-    if (catFilter !== 'all') filtered = filtered.filter(p => p.cat_id === catFilter || p.category_id === catFilter);
+    if (catFilter !== 'all') filtered = filtered.filter(p => p.cat_id === catFilter);
     if (search) filtered = filtered.filter(p => (p.product_name || '').toLowerCase().includes(search));
 
     if (!filtered.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">ไม่พบสินค้า</div><div class="empty-desc">ลองเปลี่ยนคำค้นหา</div></div>'; return; }
@@ -347,8 +347,8 @@ const Scr = (() => {
     if (val === 'today') App.S.deliveryDate = App.todaySydney();
     else if (val === 'tomorrow') App.S.deliveryDate = App.tomorrowSydney();
     else App.S.deliveryDate = val;
-    // Reload quotas for new date then re-render
-    App.loadQuotas().then(() => { App.go('browse'); });
+    // Reload quotas for new date then re-render products only (no full page re-render)
+    App.loadQuotas().then(() => { fillBrowse(); });
   }
 
   // ═══ CART ═══
@@ -438,38 +438,27 @@ const Scr = (() => {
     btn.disabled = true;
     btn.textContent = 'กำลังส่ง...';
 
+    // ─── Stock value resolver (shared by items + allStock) ───
+    function resolveStock(pid, sp) {
+      const si = App.S.stockInputs[pid];
+      if (si === undefined || si === null || si === '') return null;
+      if (sp === 2 && typeof si === 'object') return (parseFloat(si.s1) || 0) + (parseFloat(si.s2) || 0);
+      return parseFloat(si) || 0;
+    }
+
     // Sync stock_on_hand from stockInputs into cart items before submit
     const sp = App.getStockPoints();
-    const items = App.S.cart.map(c => {
-      let stockVal = c.stock_on_hand;
-      const si = App.S.stockInputs[c.product_id];
-      if (si !== undefined && si !== null && si !== '') {
-        if (sp === 2 && typeof si === 'object') {
-          stockVal = (parseFloat(si.s1) || 0) + (parseFloat(si.s2) || 0);
-        } else {
-          stockVal = parseFloat(si) || 0;
-        }
-      }
-      return {
-        product_id: c.product_id,
-        qty: c.qty,
-        is_urgent: c.is_urgent,
-        note: c.note || '',
-        stock_on_hand: stockVal,
-      };
-    });
+    const items = App.S.cart.map(c => ({
+      product_id: c.product_id,
+      qty: c.qty,
+      is_urgent: c.is_urgent,
+      note: c.note || '',
+      stock_on_hand: resolveStock(c.product_id, sp) ?? c.stock_on_hand,
+    }));
 
     // Collect all stock for history — read from stockInputs (includes non-cart items)
     const allStock = App.S.products.map(p => {
-      const si = App.S.stockInputs[p.product_id];
-      let stockVal = null;
-      if (si !== undefined && si !== null && si !== '') {
-        if (sp === 2 && typeof si === 'object') {
-          stockVal = (parseFloat(si.s1) || 0) + (parseFloat(si.s2) || 0);
-        } else {
-          stockVal = parseFloat(si) || 0;
-        }
-      }
+      const stockVal = resolveStock(p.product_id, sp);
       const cart = App.getCartItem(p.product_id);
       return {
         product_id: p.product_id,
@@ -639,7 +628,8 @@ const Scr = (() => {
   function renderOrderCard(o) {
     const items = (o.items || []);
     const summary = items.slice(0, 3).map(i => {
-      const name = (i.product_name || '').split(' ')[0];
+      const rawName = i.product_name || '';
+      const name = rawName.length > 20 ? rawName.substring(0, 18) + '\u2026' : rawName;
       return name + ' ×' + i.qty_ordered + (i.is_urgent ? '⚡' : '');
     }).join(', ');
     const isDone = ['Fulfilled', 'Delivered'].includes(o.status);
@@ -698,7 +688,7 @@ const Scr = (() => {
         <div class="detail-hd"><span class="detail-id">${App.esc(o.order_id)}</span><span class="sts ${stsClass}">${o.status}</span></div>
         <div class="detail-grid">
           <div><div class="detail-label">วันสั่ง</div><div class="detail-val">${App.fmtDateThai(o.order_date)}</div></div>
-          <div><div class="detail-label">วันส่ง</div><div class="detail-val">${App.fmtDateThai(o.delivery_date)}</div></div>
+          <div><div class="detail-label">วันส่ง</div><div class="detail-val">${App.fmtDateThai(o.delivery_date)}${canEdit ? ' <span style="font-size:10px;color:var(--blue);cursor:pointer;text-decoration:underline" onclick="Scr.showChangeDate(\'' + o.order_id + '\',\'' + o.delivery_date + '\')">เปลี่ยน</span>' : ''}</div></div>
           <div><div class="detail-label">โดย</div><div class="detail-val">${App.esc(o.display_name)}</div></div>
           <div><div class="detail-label">ร้าน</div><div class="detail-val">${App.esc(App.getStoreName(o.store_id))}${o.dept_id ? ' · ' + App.esc(o.dept_id) : ''}</div></div>
         </div>
@@ -767,8 +757,14 @@ const Scr = (() => {
         App.closeDialog();
         App.toast(resp.message || '✅ แก้ไขแล้ว', 'success');
         // Update memory
-        const item = App.S.currentOrder?.items?.find(i => i.item_id === itemId);
-        if (item) { item.qty_ordered = qty; item.is_urgent = isUrg; item.item_note = note; item.stock_on_hand = stockVal; }
+        if (qty === 0) {
+          // Remove item from memory when qty set to 0
+          const idx = App.S.currentOrder?.items?.findIndex(i => i.item_id === itemId);
+          if (idx > -1) App.S.currentOrder.items.splice(idx, 1);
+        } else {
+          const item = App.S.currentOrder?.items?.find(i => i.item_id === itemId);
+          if (item) { item.qty_ordered = qty; item.is_urgent = isUrg; item.item_note = note; item.stock_on_hand = stockVal; }
+        }
         App.S._ordersLoaded = false; // force reload next time
         fillOrderDetail(); // re-render detail from memory
       } else {
@@ -778,6 +774,41 @@ const Scr = (() => {
     } catch (e) {
       App.toast('Network error', 'error');
       btn.disabled = false; btn.textContent = '💾 บันทึก';
+    }
+  }
+
+  // ─── Change Delivery Date ───
+  function showChangeDate(orderId, currentDate) {
+    App.showDialog(`<div class="popup-sheet" style="width:340px">
+      <div class="popup-title" style="margin-bottom:12px">📅 เปลี่ยนวันส่ง</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:12px">${App.esc(orderId)}</div>
+      <div class="fg"><label class="lb">วันส่งใหม่</label><input type="date" class="inp" id="newDeliveryDate" value="${currentDate}"></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-outline" style="flex:1" onclick="App.closeDialog()">ยกเลิก</button><button class="btn btn-primary" style="flex:1" id="changeDateBtn" onclick="Scr.doChangeDate('${orderId}')">บันทึก</button></div>
+    </div>`);
+  }
+
+  async function doChangeDate(orderId) {
+    const btn = document.getElementById('changeDateBtn');
+    if (!btn || btn.disabled) return;
+    const newDate = document.getElementById('newDeliveryDate')?.value;
+    if (!newDate) { App.toast('กรุณาเลือกวันส่ง', 'error'); return; }
+    btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+    try {
+      const resp = await API.changeDeliveryDate({ order_id: orderId, delivery_date: newDate });
+      if (resp.success) {
+        App.closeDialog();
+        App.toast(resp.message || '✅ เปลี่ยนวันส่งแล้ว', 'success');
+        // Refresh order detail
+        App.S._ordersLoaded = false;
+        const detailResp = await API.getOrderDetail(orderId);
+        if (detailResp.success) { App.S.currentOrder = detailResp.data; fillOrderDetail(); }
+      } else {
+        App.toast(resp.message || 'Error', 'error');
+        btn.disabled = false; btn.textContent = 'บันทึก';
+      }
+    } catch (e) {
+      App.toast('Network error', 'error');
+      btn.disabled = false; btn.textContent = 'บันทึก';
     }
   }
 
@@ -1593,7 +1624,7 @@ const Scr = (() => {
     renderCart, removeCartItem, submitOrder,
     renderOrders, fillOrders, sortOrders, renderOrderDetail, fillOrderDetail,
     setOrderFilter, setOrderDate, setOrderDatePreset, setOrderSection, showMoreOrders,
-    showEditItem, saveEditItem, confirmCancel, doCancel,
+    showEditItem, saveEditItem, showChangeDate, doChangeDate, confirmCancel, doCancel,
     renderQuota, fillQuota, filterQuota, setQuotaCat, toggleQuotaAcc, saveQuota,
     renderWaste, fillWaste, sortWaste, setWasteDate, setWasteDatePreset, showMoreWaste,
     showWasteForm, saveWaste, showWasteEdit, saveWasteEdit, confirmDeleteWaste, doDeleteWaste,

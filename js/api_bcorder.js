@@ -1,9 +1,9 @@
 /**
- * Version 1.7.3 | 15 MAR 2026 | Siam Palette Group
+ * Version 1.7.4 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * api_bcorder.js — API Client + Token Manager
- * Fix: Add cache-buster _t param to GET requests
+ * Add: changeDeliveryDate endpoint
  * ═══════════════════════════════════════════
  */
 
@@ -105,5 +105,6 @@ const API = (() => {
     getCutoffViolations: (p = {})  => get('get_cutoff_violations', p),
     getAuditTrail:     (p = {})    => get('get_audit_trail', p),
     uploadImage:       (b)         => post('upload_image', b),
+    changeDeliveryDate:(b)         => post('change_delivery_date', b),
   };
 })();

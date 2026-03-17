@@ -1,5 +1,5 @@
 /**
- * Version 1.6.1 | 17 MAR 2026 | Siam Palette Group
+ * Version 1.6.2 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)
@@ -444,20 +444,15 @@ const Scr2 = (() => {
     const sectionLabel = _printSections.size === 0 ? 'ALL' : [..._printSections].join(', ').toUpperCase();
     const orderStr = orderIds.length > 3 ? orderIds.slice(0, 3).join(', ') + '...' : orderIds.join(', ');
 
-    // Check if any fulfil data exists
-    const hasFulfilData = prods.some(p => p.total_sent > 0);
-
     // ─── Helper: build table header row ───
-    const thRow = `<tr><th class="ptbl-name" style="text-align:left">Product</th><th>Total</th>${hasFulfilData ? '<th>Sent</th>' : ''}${stores.map(s => '<th>' + App.esc(s) + '</th>').join('')}</tr>`;
+    const thRow = `<tr><th class="ptbl-name" style="text-align:left">Product</th><th>Total</th>${stores.map(s => '<th>' + App.esc(s) + '</th>').join('')}</tr>`;
 
     // ─── Helper: build one product row ───
     function prodRow(p) {
-      const sentCell = hasFulfilData ? `<td>${p.total_sent > 0 ? p.total_sent + (p.total_sent < p.total ? '⚠' : '') : '\u2014'}</td>` : '';
       return `<tr>
         <td class="ptbl-name"><b>${App.esc(p.product_name)}</b></td>
         <td><b>${p.total}</b></td>
-        ${sentCell}
-        ${stores.map(s => { const sv = p.stores[s]; if (!sv) return '<td>\u2014</td>'; const sentInfo = sv.qty_sent > 0 && sv.qty_sent !== sv.qty ? ' \u2192 ' + sv.qty_sent : ''; return '<td>' + sv.qty + (sv.urgent ? '*' : '') + sentInfo + '</td>'; }).join('')}
+        ${stores.map(s => { const sv = p.stores[s]; if (!sv) return '<td>\u2014</td>'; return '<td>' + sv.qty + (sv.urgent ? '*' : '') + '</td>'; }).join('')}
       </tr>`;
     }
 
@@ -488,7 +483,7 @@ const Scr2 = (() => {
       if (page === totalPages - 1) {
         print += '<div class="print-legend">* = URGENT \u26A1 | Sorted A-Z by product name</div>';
       }
-      print += '<div class="print-page-footer">Page ' + (page + 1) + ' of ' + totalPages + '</div>';
+      print += '<div class="print-page-footer">\u0E2B\u0E19\u0E49\u0E32 ' + (page + 1) + ' \u0E08\u0E32\u0E01 ' + totalPages + '</div>';
       print += '</div>';
     }
 
@@ -600,24 +595,24 @@ const Scr2 = (() => {
   function setPrintDate(val) { _printDate = val; App.loadPrintCentre(val); }
 
   // ═══ BC INCOMING RETURNS ═══
-  let _retDateFrom = '';
-  let _retDateTo = '';
-  let _retFilter = 'all';
-  let _retShowCount = 5;
+  let _bcRetDateFrom = '';
+  let _bcRetDateTo = '';
+  let _bcRetFilter = 'all';
+  let _bcRetShowCount = 5;
 
   function renderBCReturns() {
     const y = App.sydneyNow(); y.setDate(y.getDate() - 3);
     const t = App.sydneyNow(); t.setDate(t.getDate() + 1);
-    _retDateFrom = App.fmtDate(y);
-    _retDateTo = App.fmtDate(t);
-    _retFilter = 'all';
-    _retShowCount = 5;
+    _bcRetDateFrom = App.fmtDate(y);
+    _bcRetDateTo = App.fmtDate(t);
+    _bcRetFilter = 'all';
+    _bcRetShowCount = 5;
     return `<div class="toolbar"><button class="toolbar-back" onclick="App.go('home')">\u2190</button><div class="toolbar-title">Incoming Returns</div></div>
       <div class="order-date-bar">
         <span class="date-label">\uD83D\uDCC5 Date:</span>
-        <input type="date" class="date-inp" value="${_retDateFrom}" onchange="Scr2.setBCRetDate('from',this.value)">
+        <input type="date" class="date-inp" value="${_bcRetDateFrom}" onchange="Scr2.setBCRetDate('from',this.value)">
         <span style="color:var(--t4)">\u2192</span>
-        <input type="date" class="date-inp" value="${_retDateTo}" onchange="Scr2.setBCRetDate('to',this.value)">
+        <input type="date" class="date-inp" value="${_bcRetDateTo}" onchange="Scr2.setBCRetDate('to',this.value)">
         <span class="date-link" onclick="Scr2.setBCRetPreset('3day')">3 \u0E27\u0E31\u0E19</span>
         <span class="date-link" onclick="Scr2.setBCRetPreset('all')">\u0E17\u0E31\u0E49\u0E07\u0E2B\u0E21\u0E14</span>
       </div>
@@ -633,8 +628,8 @@ const Scr2 = (() => {
     const all = App.S.returns || [];
     // Date filter
     let filtered = all;
-    if (_retDateFrom) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) >= _retDateFrom);
-    if (_retDateTo) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) <= _retDateTo);
+    if (_bcRetDateFrom) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) >= _bcRetDateFrom);
+    if (_bcRetDateTo) filtered = filtered.filter(r => (r.created_at || '').substring(0, 10) <= _bcRetDateTo);
 
     // Count by status
     const counts = { all: filtered.length, Reported: 0, Received: 0, Done: 0 };
@@ -651,26 +646,26 @@ const Scr2 = (() => {
         { k: 'Reported', l: 'Reported', c: counts.Reported },
         { k: 'Received', l: 'Received', c: counts.Received },
         { k: 'Done', l: 'Done', c: counts.Done },
-      ].map(f => `<div class="chip${_retFilter === f.k ? ' active' : ''}" onclick="Scr2.setBCRetFilter('${f.k}')">${f.l}${f.c ? ' (' + f.c + ')' : ''}</div>`).join('');
+      ].map(f => `<div class="chip${_bcRetFilter === f.k ? ' active' : ''}" onclick="Scr2.setBCRetFilter('${f.k}')">${f.l}${f.c ? ' (' + f.c + ')' : ''}</div>`).join('');
     }
 
     // Apply filter
     let shown = filtered;
-    if (_retFilter === 'Reported') shown = filtered.filter(r => r.status === 'Reported');
-    else if (_retFilter === 'Received') shown = filtered.filter(r => r.status === 'Received');
-    else if (_retFilter === 'Done') shown = filtered.filter(r => !['Reported', 'Received'].includes(r.status));
+    if (_bcRetFilter === 'Reported') shown = filtered.filter(r => r.status === 'Reported');
+    else if (_bcRetFilter === 'Received') shown = filtered.filter(r => r.status === 'Received');
+    else if (_bcRetFilter === 'Done') shown = filtered.filter(r => !['Reported', 'Received'].includes(r.status));
 
     if (!shown.length) {
       el.innerHTML = '<div class="empty"><div class="empty-icon">\u21A9\uFE0F</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E21\u0E35 Return</div></div>';
       return;
     }
 
-    const visible = shown.slice(0, _retShowCount);
-    const hasMore = shown.length > _retShowCount;
+    const visible = shown.slice(0, _bcRetShowCount);
+    const hasMore = shown.length > _bcRetShowCount;
 
     el.innerHTML = `<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${shown.length} records</div>
       <div style="display:flex;flex-direction:column;gap:6px">${visible.map(r => renderBCRetCard(r)).join('')}</div>
-      ${hasMore ? `<div class="load-more" onclick="Scr2.showMoreBCRet()">\u0E41\u0E2A\u0E14\u0E07 ${_retShowCount} \u0E08\u0E32\u0E01 ${shown.length} \u00B7 \u0E42\u0E2B\u0E25\u0E14\u0E40\u0E1E\u0E34\u0E48\u0E21 5 \u2193</div>` : ''}`;
+      ${hasMore ? `<div class="load-more" onclick="Scr2.showMoreBCRet()">\u0E41\u0E2A\u0E14\u0E07 ${_bcRetShowCount} \u0E08\u0E32\u0E01 ${shown.length} \u00B7 \u0E42\u0E2B\u0E25\u0E14\u0E40\u0E1E\u0E34\u0E48\u0E21 5 \u2193</div>` : ''}`;
   }
 
   function renderBCRetCard(r) {
@@ -711,7 +706,10 @@ const Scr2 = (() => {
     </div>`;
   }
 
+  let _doReceiveBusy = false;
   async function doReceive(returnId) {
+    if (_doReceiveBusy) return;
+    _doReceiveBusy = true;
     try {
       const resp = await API.receiveReturn({ return_id: returnId });
       if (resp.success) {
@@ -724,10 +722,15 @@ const Scr2 = (() => {
       }
     } catch (e) {
       App.toast('Network error', 'error');
+    } finally {
+      _doReceiveBusy = false;
     }
   }
 
+  let _doResolveBusy = false;
   async function doResolve(returnId, resolution) {
+    if (_doResolveBusy) return;
+    _doResolveBusy = true;
     try {
       const resp = await API.resolveReturn({ return_id: returnId, resolution });
       if (resp.success) {
@@ -741,6 +744,8 @@ const Scr2 = (() => {
       }
     } catch (e) {
       App.toast('Network error', 'error');
+    } finally {
+      _doResolveBusy = false;
     }
   }
 
@@ -819,14 +824,14 @@ const Scr2 = (() => {
     </div>`);
   }
 
-  function setBCRetDate(which, val) { if (which === 'from') _retDateFrom = val; else _retDateTo = val; fillBCReturns(); }
+  function setBCRetDate(which, val) { if (which === 'from') _bcRetDateFrom = val; else _bcRetDateTo = val; fillBCReturns(); }
   function setBCRetPreset(p) {
-    if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 3); _retDateFrom = App.fmtDate(y); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _retDateTo = App.fmtDate(t); }
-    else { _retDateFrom = ''; _retDateTo = ''; }
+    if (p === '3day') { const y = App.sydneyNow(); y.setDate(y.getDate() - 3); _bcRetDateFrom = App.fmtDate(y); const t = App.sydneyNow(); t.setDate(t.getDate() + 1); _bcRetDateTo = App.fmtDate(t); }
+    else { _bcRetDateFrom = ''; _bcRetDateTo = ''; }
     fillBCReturns();
   }
-  function setBCRetFilter(f) { _retFilter = f; _retShowCount = 5; fillBCReturns(); }
-  function showMoreBCRet() { _retShowCount += 5; fillBCReturns(); }
+  function setBCRetFilter(f) { _bcRetFilter = f; _bcRetShowCount = 5; fillBCReturns(); }
+  function showMoreBCRet() { _bcRetShowCount += 5; fillBCReturns(); }
 
   // ═══ MANAGE PRODUCTS ═══
   let _prodTab = 'active'; // 'active' | 'inactive'
@@ -896,17 +901,20 @@ const Scr2 = (() => {
     if (!filtered.length) {
       cards = '<div class="empty"><div class="empty-icon">\uD83D\uDD0D</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32</div></div>';
     } else {
-      cards = '<div style="display:flex;flex-direction:column;gap:4px">' + filtered.map(p => {
-        const catName = (App.S.categories.find(c => c.cat_id === p.category_id) || {}).cat_name || p.category_id;
-        const stsBg = p.is_active ? 'background:var(--green-bg);color:var(--green)' : 'background:var(--bg3);color:var(--t3)';
-        return `<div style="padding:12px;border:1px solid var(--bd2);border-radius:var(--rd);background:var(--bg);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="App.go('prod-edit',{id:'${p.product_id}'})">
-          <div style="flex:1"><div style="font-size:12px;font-weight:600">${App.esc(p.product_name)}</div><div style="font-size:10px;color:var(--t3)">${App.esc(catName)} \u00B7 ${App.esc(p.section_id)} \u00B7 ${App.esc(p.unit)} \u00B7 Min ${p.min_order || 1}</div></div>
-          <span class="sts" style="${stsBg}">${p.is_active ? 'Active' : 'Hidden'}</span>
-          <span>\u270F\uFE0F</span>
-        </div>`;
-      }).join('') + '</div>';
+      cards = '<div style="display:flex;flex-direction:column;gap:4px">' + filtered.map(prodCardHtml).join('') + '</div>';
     }
     resEl.innerHTML = cards;
+  }
+
+  // ─── Product card template (shared by fillProducts + filterProds) ───
+  function prodCardHtml(p) {
+    const catName = (App.S.categories.find(c => c.cat_id === p.category_id) || {}).cat_name || p.category_id;
+    const stsBg = p.is_active ? 'background:var(--green-bg);color:var(--green)' : 'background:var(--bg3);color:var(--t3)';
+    return `<div style="padding:12px;border:1px solid var(--bd2);border-radius:var(--rd);background:var(--bg);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="App.go('prod-edit',{id:'${p.product_id}'})">
+      <div style="flex:1"><div style="font-size:12px;font-weight:600">${App.esc(p.product_name)}</div><div style="font-size:10px;color:var(--t3)">${App.esc(catName)} \u00B7 ${App.esc(p.section_id)} \u00B7 ${App.esc(p.unit)} \u00B7 Min ${p.min_order || 1}</div></div>
+      <span class="sts" style="${stsBg}">${p.is_active ? 'Active' : 'Hidden'}</span>
+      <span>\u270F\uFE0F</span>
+    </div>`;
   }
 
   function setProdTab(tab) { _prodTab = tab; _prodSectionFilter = 'all'; fillProducts(); }
@@ -927,15 +935,7 @@ const Scr2 = (() => {
     if (!filtered.length) {
       resEl.innerHTML = '<div class="empty"><div class="empty-icon">\uD83D\uDD0D</div><div class="empty-title">\u0E44\u0E21\u0E48\u0E1E\u0E1A\u0E2A\u0E34\u0E19\u0E04\u0E49\u0E32</div></div>';
     } else {
-      resEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:4px">' + filtered.map(p => {
-        const catName = (App.S.categories.find(c => c.cat_id === p.category_id) || {}).cat_name || p.category_id;
-        const stsBg = p.is_active ? 'background:var(--green-bg);color:var(--green)' : 'background:var(--bg3);color:var(--t3)';
-        return `<div style="padding:12px;border:1px solid var(--bd2);border-radius:var(--rd);background:var(--bg);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="App.go('prod-edit',{id:'${p.product_id}'})">
-          <div style="flex:1"><div style="font-size:12px;font-weight:600">${App.esc(p.product_name)}</div><div style="font-size:10px;color:var(--t3)">${App.esc(catName)} \u00B7 ${App.esc(p.section_id)} \u00B7 ${App.esc(p.unit)} \u00B7 Min ${p.min_order || 1}</div></div>
-          <span class="sts" style="${stsBg}">${p.is_active ? 'Active' : 'Hidden'}</span>
-          <span>\u270F\uFE0F</span>
-        </div>`;
-      }).join('') + '</div>';
+      resEl.innerHTML = '<div style="display:flex;flex-direction:column;gap:4px">' + filtered.map(prodCardHtml).join('') + '</div>';
     }
   }
   function setProdSection(sec) { _prodSectionFilter = sec; fillProducts(); }

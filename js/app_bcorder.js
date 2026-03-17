@@ -1,5 +1,5 @@
 /**
- * Version 2.3.4 | 17 MAR 2026 | Siam Palette Group
+ * Version 2.3.5 | 17 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
@@ -176,6 +176,7 @@ const App = (() => {
       const resp = await API.getProducts({ include_stock: 'false' });
       if (resp.success) {
         S.products = (resp.data || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+        S.products.forEach(p => { if (!p.cat_id && p.category_id) p.cat_id = p.category_id; });
         S._prodsLoaded = true;
         API.cache.set('prods', S.products, 60);
       }
@@ -225,6 +226,7 @@ const App = (() => {
       const resp = await API.initBrowse({ day: String(dow) });
       if (resp.success) {
         S.products = (resp.products || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
+        S.products.forEach(p => { if (!p.cat_id && p.category_id) p.cat_id = p.category_id; });
         S._prodsLoaded = true;
         API.cache.set('prods', S.products, 60);
         S.quotas = resp.quotas || {};
@@ -578,8 +580,9 @@ const App = (() => {
   }
 
   function refreshCurrent() {
-    // Hard refresh — เหมือน cmd+shift+R
-    location.reload();
+    // Soft refresh — reload data + re-render current route (no location.reload)
+    const { route, params } = parseHash(location.hash);
+    go(route || 'home', params);
   }
 
   // ═══ SIDEBAR ═══
@@ -666,7 +669,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.2.8 | 16 Mar 2026</div>
+      <div class="sd-version">v2.3.5 | 17 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -749,7 +752,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.2.8</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.3.5</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
