@@ -839,6 +839,7 @@ const App = (() => {
 
   // ═══ INIT ═══
   async function init() {
+    const savedHash = location.hash; // Save original hash before loading screen overwrites it
     go('loading', {}, true);
     const urlParams = new URLSearchParams(location.search);
     const urlToken = urlParams.get('token');
@@ -859,7 +860,7 @@ const App = (() => {
       const mr = S.deptMapping?.module_role;
       S.role = (mr === 'bc_production' || mr === 'bc_management') ? 'bc' : 'store';
       const tl = parseInt((S.session.tier_id || 'T9').replace('T', '')); S.sidebarRole = tl <= 2 ? 'admin' : S.role;
-      const { route: hr, params: hp } = parseHash(location.hash);
+      const { route: hr, params: hp } = parseHash(savedHash);
       if (hr && ROUTES[hr] && !['loading', 'no-token', 'invalid-token', 'blocked'].includes(hr)) go(hr, hp, true);
       else go('home', {}, true);
       startSessionMonitor();
