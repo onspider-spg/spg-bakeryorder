@@ -1,5 +1,5 @@
 /**
- * Version 1.7.3 | 18 MAR 2026 | Siam Palette Group
+ * Version 1.7.4 | 18 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
@@ -104,7 +104,7 @@ const Scr = (() => {
           <div class="chip${isToday ? ' active' : ''}" onclick="Scr.setDate('today')">วันนี้</div>
           <div class="chip${isTmr ? ' active' : ''}" onclick="Scr.setDate('tomorrow')">พรุ่งนี้</div>
           <div class="chip${isCustom ? ' active' : ''}" onclick="document.getElementById('customDate').showPicker?.();document.getElementById('customDate').focus()">เลือกวัน</div>
-          <input type="date" id="customDate" value="${dd}" style="position:absolute;opacity:0;pointer-events:none" onchange="Scr.setDate(this.value)">
+          <input type="date" id="customDate" value="${dd}" min="${today}" style="position:absolute;opacity:0;pointer-events:none" onchange="Scr.setDate(this.value)">
           <span class="date-display">${App.fmtDateThai(dd)}</span>
         </div>
         <div class="search-bar">
@@ -170,13 +170,13 @@ const Scr = (() => {
       const v2 = saved?.s2 ?? '';
       const sum = (v1 !== '' || v2 !== '') ? (parseFloat(v1) || 0) + (parseFloat(v2) || 0) : '—';
       stockHtml = `<div class="pcard-stock2">
-        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 1</div><input type="number" step="0.1" id="stk1-${pid}" class="stock-inp-sm" placeholder="—" value="${v1}" oninput="Scr.onStock2(this,'${pid}')"></div>
-        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 2</div><input type="number" step="0.1" id="stk2-${pid}" class="stock-inp-sm" placeholder="—" value="${v2}" oninput="Scr.onStock2(this,'${pid}')"></div>
+        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 1</div><input type="number" step="any" id="stk1-${pid}" class="stock-inp-sm" placeholder="—" value="${v1}" oninput="Scr.onStock2(this,'${pid}')"></div>
+        <div class="pcard-stock2-col"><div class="pcard-col-sub">จุด 2</div><input type="number" step="any" id="stk2-${pid}" class="stock-inp-sm" placeholder="—" value="${v2}" oninput="Scr.onStock2(this,'${pid}')"></div>
       </div>
       <div class="pcard-stock-sum">รวม <span id="stkSum-${pid}">${sum}</span></div>`;
     } else {
       const v = saved ?? '';
-      stockHtml = `<input type="number" step="0.1" id="stk-${pid}" class="stock-inp" placeholder="กรอก" value="${v}" oninput="Scr.onStock1(this,'${pid}')">`;
+      stockHtml = `<input type="number" step="any" id="stk-${pid}" class="stock-inp" placeholder="กรอก" value="${v}" oninput="Scr.onStock1(this,'${pid}')">`;
     }
 
     return `<div class="pcard${isInCart ? ' pcard-active' : ''}" id="pc-${pid}">
@@ -346,9 +346,36 @@ const Scr = (() => {
   function setDate(val) {
     if (val === 'today') App.S.deliveryDate = App.todaySydney();
     else if (val === 'tomorrow') App.S.deliveryDate = App.tomorrowSydney();
-    else App.S.deliveryDate = val;
-    // Reload quotas for new date then re-render products only (no full page re-render)
+    else {
+      if (val < App.todaySydney()) { App.toast('ไม่สามารถเลือกวันที่ผ่านมาแล้ว', 'error'); return; }
+      App.S.deliveryDate = val;
+    }
+    // Update date pills active state + date display
+    updateDatePills();
+    // Reload quotas for new date then re-render products
     App.loadQuotas().then(() => { fillBrowse(); });
+  }
+
+  function updateDatePills() {
+    const today = App.todaySydney();
+    const tmr = App.tomorrowSydney();
+    const dd = App.S.deliveryDate || tmr;
+    const isToday = dd === today;
+    const isTmr = dd === tmr;
+    const isCustom = !isToday && !isTmr;
+    // Update chip active states
+    const pills = document.querySelectorAll('.date-pills .chip');
+    if (pills.length >= 3) {
+      pills[0].className = 'chip' + (isToday ? ' active' : '');
+      pills[1].className = 'chip' + (isTmr ? ' active' : '');
+      pills[2].className = 'chip' + (isCustom ? ' active' : '');
+    }
+    // Update date display text
+    const display = document.querySelector('.date-display');
+    if (display) display.textContent = App.fmtDateThai(dd);
+    // Update hidden date input
+    const inp = document.getElementById('customDate');
+    if (inp) inp.value = dd;
   }
 
   // ═══ CART ═══
@@ -494,11 +521,13 @@ const Scr = (() => {
 
       if (resp.success) {
         App.toast(resp.message || (isEditMode ? '✅ แก้ไขเรียบร้อย!' : '✅ สั่งเรียบร้อย!'), 'success');
+        const newOrderId = resp.data?.order_id || (isEditMode ? App.S.editingOrderId : null);
         App.S.cart = [];
         App.S.stockInputs = {};
         App.S.editingOrderId = null;
         App.S._ordersLoaded = false;
-        App.go('home');
+        if (newOrderId) { App.go('order-detail', { id: newOrderId }); }
+        else { App.go('home'); }
       } else {
         App.toast(resp.message || resp.error || 'เกิดข้อผิดพลาด', 'error');
         btn.disabled = false;
