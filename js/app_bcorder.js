@@ -175,8 +175,7 @@ const App = (() => {
     try {
       const resp = await API.getProducts({ include_stock: 'false' });
       if (resp.success) {
-        S.products = (resp.data || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
-        S.products.forEach(p => { if (!p.cat_id && p.category_id) p.cat_id = p.category_id; });
+        S.products = normalizeProducts((resp.data || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || '')));
         S._prodsLoaded = true;
         API.cache.set('prods', S.products, 60);
       }
@@ -228,8 +227,7 @@ const App = (() => {
     try {
       const resp = await API.initBrowse({ day: String(dow) });
       if (resp.success) {
-        S.products = (resp.products || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || ''));
-        S.products.forEach(p => { if (!p.cat_id && p.category_id) p.cat_id = p.category_id; });
+        S.products = normalizeProducts((resp.products || []).sort((a, b) => (a.product_name || '').localeCompare(b.product_name || '')));
         S._prodsLoaded = true;
         API.cache.set('prods', S.products, 60);
         S.quotas = resp.quotas || {};
@@ -800,6 +798,11 @@ const App = (() => {
   }
 
   // ═══ HELPERS ═══
+  /** Normalize product fields after fetch (single source of truth for field mapping) */
+  function normalizeProducts(products) {
+    products.forEach(p => { if (!p.cat_id && p.category_id) p.cat_id = p.category_id; });
+    return products;
+  }
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
   function hasPerm(fnId) {
     const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));

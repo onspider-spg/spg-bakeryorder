@@ -597,11 +597,9 @@ const Scr = (() => {
       filtered = filtered.filter(o => (o.items || []).some(i => i.section_id === _orderSectionFilter));
     }
 
-    // BC: Populate section chips
+    // BC: Populate section chips (from categories master list — not from order data)
     if (secEl && isBC) {
-      const secs = new Set();
-      all.forEach(o => (o.items || []).forEach(i => { if (i.section_id) secs.add(i.section_id); }));
-      const sorted = [...secs].sort();
+      const sorted = [...new Set(App.S.categories.map(c => c.section_id).filter(Boolean))].sort();
       secEl.innerHTML = `<div class="chip${_orderSectionFilter === 'all' ? ' active' : ''}" onclick="Scr.setOrderSection('all')">All</div>` +
         sorted.map(s => `<div class="chip${_orderSectionFilter === s ? ' active' : ''}" onclick="Scr.setOrderSection('${s}')">${App.esc(s)}</div>`).join('');
     }

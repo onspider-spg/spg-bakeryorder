@@ -235,10 +235,8 @@ const Scr3 = (() => {
     const channels = App.S.adminChannels;
     if (!prods || !channels) { el.innerHTML = '<div class="empty"><div class="empty-icon">👁️</div><div class="empty-title">กำลังโหลด...</div></div>'; return; }
 
-    // Section filter
-    const secs = new Set();
-    prods.forEach(p => { if (p.section_id) secs.add(p.section_id); });
-    const sortedSecs = [...secs].sort();
+    // Section filter (from categories master list — ensures all sections always visible)
+    const sortedSecs = [...new Set(App.S.categories.map(c => c.section_id).filter(Boolean))].sort();
 
     const secChips = `<div style="display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap">
       <div class="chip${_visSection === 'all' ? ' active' : ''}" onclick="Scr3.setVisSection('all')">All</div>

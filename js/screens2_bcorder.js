@@ -405,10 +405,8 @@ const Scr2 = (() => {
       <input class="inp" type="date" value="${_printDate}" style="width:auto;font-size:12px;padding:6px 10px" onchange="Scr2.setPrintDate(this.value)">
     </div>`;
 
-    // Section checkboxes (multi-select)
-    const secs = new Set();
-    (d.products || []).forEach(p => { if (p.section_id) secs.add(p.section_id); });
-    const sorted = [...secs].sort();
+    // Section checkboxes (from categories master list — not from production data)
+    const sorted = [...new Set(App.S.categories.map(c => c.section_id).filter(Boolean))].sort();
     const allChecked = _printSections.size === 0;
     const secChips = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" ${allChecked ? 'checked' : ''} onchange="Scr2.togglePrintSecAll(this.checked)"> All</label>
@@ -865,10 +863,8 @@ const Scr2 = (() => {
     const inactive = prods.filter(p => !p.is_active);
     const list = _prodTab === 'active' ? active : inactive;
 
-    // Sections from products
-    const secs = new Set();
-    list.forEach(p => { if (p.section_id) secs.add(p.section_id); });
-    const sortedSecs = [...secs].sort();
+    // Sections from categories master list (not from product list — ensures all sections always visible)
+    const sortedSecs = [...new Set(App.S.categories.map(c => c.section_id).filter(Boolean))].sort();
 
     // Filter
     let filtered = list;
