@@ -1,5 +1,5 @@
 /**
- * Version 1.6.2 | 17 MAR 2026 | Siam Palette Group
+ * Version 1.6.3 | 18 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens2_bcorder.js — Screen Renderers (BC Staff)

@@ -1,5 +1,5 @@
 /**
- * Version 1.7.4 | 18 MAR 2026 | Siam Palette Group
+ * Version 1.7.5 | 18 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens_bcorder.js — Screen Renderers (Store + shared)
