@@ -100,7 +100,7 @@ const Scr4 = (() => {
     // Top Ordered
     const medals = ['🥇', '🥈', '🥉'];
     const topOrd = d.top_ordered || [];
-    const maxOrd = Math.max(...topOrd.map(r => r.count || r.qty), 1);
+    const maxOrd = Math.max(...topOrd.map(r => (r.count || r.qty || 0)), 1);
     const topBars = topOrd.slice(0, 5).map((r, i) => {
       const v = r.count || r.qty || 0;
       return `<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${medals[i] || '#' + (i + 1)} <b>${App.esc(r.product_name || r.name)}</b></span><span style="font-weight:700">${v}</span></div>${hBar(v / maxOrd * 100, i < 3 ? 'var(--acc)' : 'var(--blue)')}</div>`;
