@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BC Executive — All Functions Overview</title>
+<style>
+  :root {
+    --bg:#fff;--bg2:#fafafa;--bg3:#f3f4f6;--bg-main:#f5f5f5;
+    --t1:#111;--t2:#555;--t3:#999;--t4:#bbb;
+    --acc:#7c3aed;--acc2:#ede9fe;--acc3:#6d28d9;
+    --green:#059669;--green-bg:#ecfdf5;
+    --red:#dc2626;--red-bg:#fef2f2;
+    --orange:#d97706;--orange-bg:#fffbeb;
+    --blue:#2563eb;--blue-bg:#dbeafe;
+    --bd:#e5e7eb;--bd2:#f0f0f0;
+    --rd:8px;--rd-lg:12px;--rd-pill:20px;
+    --sidebar-w:210px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:var(--t1);background:var(--bg-main)}
+
+  /* SIDEBAR */
+  .sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:var(--bg);border-right:1px solid var(--bd);display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+  .sidebar-brand{padding:14px 16px;border-bottom:1px solid var(--bd2)}
+  .sidebar-brand h3{font-size:14px;color:var(--acc);font-weight:700}
+  .sidebar-brand small{font-size:10px;color:var(--t3)}
+  .sidebar-nav{flex:1;padding:6px 0}
+  .nav-section{padding:0 10px;margin-top:10px}
+  .nav-section-title{font-size:8px;text-transform:uppercase;color:var(--t4);font-weight:700;letter-spacing:1px;padding:4px 8px}
+  .nav-item{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:var(--rd);cursor:pointer;color:var(--t2);font-size:11px;transition:all .15s;text-decoration:none}
+  .nav-item:hover{background:var(--bg3);color:var(--t1)}
+  .nav-item.active{background:var(--acc2);color:var(--acc);font-weight:600}
+  .nav-item .icon{width:16px;text-align:center;font-size:12px}
+  .nav-tag{margin-left:auto;font-size:7px;font-weight:700;padding:1px 5px;border-radius:3px;white-space:nowrap}
+  .nav-tag-e{background:var(--green-bg);color:var(--green)}
+  .nav-tag-n{background:var(--acc2);color:var(--acc)}
+  .nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:8px;padding:1px 5px;border-radius:10px;font-weight:700}
+  .sidebar-footer{padding:10px 16px;border-top:1px solid var(--bd2);font-size:9px;color:var(--t4)}
+
+  /* MAIN */
+  .main{margin-left:var(--sidebar-w);min-height:100vh}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--bg);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:50}
+  .topbar-title{font-size:15px;font-weight:700}
+  .topbar-right{display:flex;align-items:center;gap:10px;font-size:11px}
+  .content{padding:16px 20px}
+
+  /* CARDS */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+  .kpi-card{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd-lg);padding:14px;border-left:4px solid var(--bd)}
+  .kpi-val{font-size:22px;font-weight:800}
+  .kpi-label{font-size:9px;color:var(--t3);margin-top:2px}
+  .kpi-change{font-size:9px;margin-top:3px}
+  .kpi-change.up{color:var(--green)} .kpi-change.down{color:var(--red)}
+
+  .card{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd-lg);padding:14px;margin-bottom:14px}
+  .card-title{font-size:12px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+  .card-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .card-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+  /* BARS */
+  .bar-item{margin-bottom:7px}
+  .bar-label{display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px}
+  .bar-track{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px}
+
+  /* TABLE */
+  table{width:100%;border-collapse:collapse;font-size:10px}
+  th{text-align:left;padding:6px 8px;border-bottom:2px solid var(--bd);color:var(--t3);font-size:9px;font-weight:600;text-transform:uppercase}
+  td{padding:6px 8px;border-bottom:1px solid var(--bd2)}
+  tr:hover td{background:var(--bg2)}
+
+  /* BADGES */
+  .badge{display:inline-block;padding:2px 7px;border-radius:var(--rd-pill);font-size:9px;font-weight:600}
+  .badge-ok{background:var(--green-bg);color:var(--green)}
+  .badge-warn{background:var(--orange-bg);color:var(--orange)}
+  .badge-danger{background:var(--red-bg);color:var(--red)}
+  .badge-info{background:var(--blue-bg);color:var(--blue)}
+
+  .chip-row{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+  .chip{padding:3px 10px;border-radius:var(--rd-pill);font-size:10px;border:1px solid var(--bd);cursor:pointer;background:var(--bg);color:var(--t2)}
+  .chip.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+
+  .date-bar{display:flex;align-items:center;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+  .date-bar input[type="date"]{padding:3px 7px;border:1px solid var(--bd);border-radius:var(--rd);font-size:10px}
+  .date-link{font-size:10px;color:var(--acc);cursor:pointer;padding:2px 7px;border-radius:var(--rd-pill)}
+  .date-link:hover{background:var(--acc2)}
+  .date-link.active{background:var(--acc);color:#fff}
+
+  .tag-e{display:inline-block;background:var(--green-bg);color:var(--green);font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px}
+  .tag-n{display:inline-block;background:var(--acc2);color:var(--acc);font-size:8px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:4px}
+
+  /* ALERTS CONFIG */
+  .alert-rule{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--bg2);border-radius:var(--rd);margin-bottom:6px}
+  .rule-icon{font-size:14px}
+  .rule-body{flex:1}
+  .rule-title{font-weight:600;font-size:11px}
+  .rule-desc{font-size:9px;color:var(--t3)}
+  .toggle{width:34px;height:18px;border-radius:9px;background:var(--bd);position:relative;cursor:pointer;flex-shrink:0}
+  .toggle.on{background:var(--green)}
+  .toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s}
+  .toggle.on::after{left:18px}
+  .threshold-inp{width:50px;padding:3px 6px;border:1px solid var(--bd);border-radius:var(--rd);font-size:10px;text-align:center}
+
+  .section-title{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;margin-top:16px}
+  .page{display:none}.page.active{display:block}
+  .wireframe-note{background:#fef3c7;border:1px dashed var(--orange);border-radius:var(--rd);padding:6px 10px;font-size:9px;color:var(--orange);margin-bottom:12px}
+
+  /* ORDER GRID */
+  .order-card{background:var(--bg);border:1px solid var(--bd);border-radius:var(--rd);padding:10px;display:flex;gap:10px;align-items:center;margin-bottom:8px}
+  .order-card:hover{border-color:var(--acc)}
+  .order-id{font-weight:700;color:var(--acc);font-size:11px}
+  .order-meta{font-size:9px;color:var(--t3)}
+  .sts{display:inline-block;padding:2px 8px;border-radius:var(--rd-pill);font-size:9px;font-weight:600}
+  .sts-pending{background:var(--orange-bg);color:var(--orange)}
+  .sts-ordered{background:var(--blue-bg);color:var(--blue)}
+  .sts-fulfilled{background:var(--green-bg);color:var(--green)}
+  .sts-cancelled{background:var(--red-bg);color:var(--red)}
+
+  /* PRODUCT GRID */
+  .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+  .prod-card{background:var(--bg2);border:1px solid var(--bd2);border-radius:var(--rd);padding:10px;text-align:center;cursor:pointer}
+  .prod-card:hover{border-color:var(--acc)}
+  .prod-card .prod-icon{font-size:24px;margin-bottom:4px}
+  .prod-card .prod-name{font-size:10px;font-weight:600}
+  .prod-card .prod-qty{font-size:9px;color:var(--t3)}
+
+  /* CONFIG FORM */
+  .config-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bd2)}
+  .config-label{font-size:11px;font-weight:600}
+  .config-val{font-size:11px;color:var(--acc);font-weight:600}
+  .config-inp{padding:4px 8px;border:1px solid var(--bd);border-radius:var(--rd);font-size:11px;width:160px}
+
+  /* ACCESS MATRIX */
+  .access-grid{display:grid;grid-template-columns:150px repeat(4,1fr);gap:1px;background:var(--bd);border-radius:var(--rd);overflow:hidden}
+  .access-cell{background:var(--bg);padding:6px 8px;font-size:10px;text-align:center}
+  .access-cell.hdr{background:var(--bg3);font-weight:700;font-size:9px;text-transform:uppercase;color:var(--t3)}
+  .access-cell.row-hdr{text-align:left;font-weight:600}
+  .access-check{color:var(--green);font-weight:700}
+  .access-x{color:var(--red)}
+
+  @media(max-width:768px){
+    .sidebar{display:none}.main{margin-left:0}
+    .card-grid-2,.card-grid-3{grid-template-columns:1fr}
+    .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR — ALL BC FUNCTIONS ═══ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <h3>BC Order</h3>
+    <small>T1-T2 Executive View · All Functions</small>
+  </div>
+  <nav class="sidebar-nav">
+
+    <!-- DASHBOARD -->
+    <div class="nav-section">
+      <div class="nav-section-title">Dashboard</div>
+      <a class="nav-item active" onclick="go('overview')"><span class="icon">◇</span>Overview<span class="nav-tag nav-tag-n">NEW</span></a>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="nav-section">
+      <div class="nav-section-title">Orders</div>
+      <a class="nav-item" onclick="go('browse')"><span class="icon">🛒</span>Create Order<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('orders')"><span class="icon">📋</span>View Orders<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('quota')"><span class="icon">📊</span>Set Quota<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('stock')"><span class="icon">📦</span>Stock History<span class="nav-tag nav-tag-e">EXIST</span></a>
+    </div>
+
+    <!-- BC OPERATIONS -->
+    <div class="nav-section">
+      <div class="nav-section-title">BC Operations</div>
+      <a class="nav-item" onclick="go('bc-orders')"><span class="icon">📥</span>Incoming Orders<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('print')"><span class="icon">🖨️</span>Print Centre<span class="nav-tag nav-tag-e">EXIST</span></a>
+    </div>
+
+    <!-- RECORDS -->
+    <div class="nav-section">
+      <div class="nav-section-title">Records</div>
+      <a class="nav-item" onclick="go('waste-log')"><span class="icon">🗑️</span>Waste Log<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('returns')"><span class="icon">🔄</span>Returns<span class="nav-tag nav-tag-e">EXIST</span></a>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="nav-section">
+      <div class="nav-section-title">Reports</div>
+      <a class="nav-item" onclick="go('rpt-waste')"><span class="icon">📊</span>Waste Dashboard<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('rpt-top')"><span class="icon">🏆</span>Top Products<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('rpt-ops')"><span class="icon">🏥</span>Operational Health<span class="nav-tag nav-tag-n">NEW</span></a>
+      <a class="nav-item" onclick="go('rpt-audit')"><span class="icon">📝</span>Audit Trail<span class="nav-tag nav-tag-e">EXIST</span></a>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="nav-section">
+      <div class="nav-section-title">Admin</div>
+      <a class="nav-item" onclick="go('adm-products')"><span class="icon">🧁</span>Manage Products<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('adm-visibility')"><span class="icon">👁️</span>Product Visibility<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('adm-access')"><span class="icon">🔑</span>User Access<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('adm-dept')"><span class="icon">🏢</span>Dept Mapping<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('adm-config')"><span class="icon">⚙️</span>System Config<span class="nav-tag nav-tag-e">EXIST</span></a>
+      <a class="nav-item" onclick="go('adm-alerts')"><span class="icon">🔔</span>Alerts Setup<span class="nav-tag nav-tag-n">NEW</span><span class="nav-badge">3</span></a>
+    </div>
+
+  </nav>
+  <div class="sidebar-footer">
+    v2.3.7 · 24 functions (21 exist + 3 new)<br>
+    <a href="#" style="color:var(--acc);text-decoration:none">← Back to Home</a> · <a href="#" style="color:var(--t3);text-decoration:none">Logout</a>
+  </div>
+</aside>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">Overview Dashboard</div>
+    <div class="topbar-right">
+      <span style="color:var(--t3)">Mar 2026</span>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span style="width:22px;height:22px;border-radius:50%;background:var(--acc2);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--acc);font-weight:700">ON</span>
+        <span style="font-size:11px">Onnie · T1</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 1. OVERVIEW DASHBOARD (NEW)            -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page active" id="p-overview">
+    <div class="content">
+      <div class="wireframe-note">🆕 NEW — Executive Overview Dashboard</div>
+      <div class="kpi-grid">
+        <div class="kpi-card" style="border-left-color:var(--acc)"><div class="kpi-val" style="color:var(--acc)">2,847</div><div class="kpi-label">Total Orders (30d)</div><div class="kpi-change up">▲ 12%</div></div>
+        <div class="kpi-card" style="border-left-color:var(--red)"><div class="kpi-val" style="color:var(--red)">186</div><div class="kpi-label">Total Waste</div><div class="kpi-change down">▲ 8%</div></div>
+        <div class="kpi-card" style="border-left-color:var(--green)"><div class="kpi-val" style="color:var(--green)">94.2%</div><div class="kpi-label">Fulfilment Rate</div><div class="kpi-change up">▲ 2.1%</div></div>
+        <div class="kpi-card" style="border-left-color:var(--orange)"><div class="kpi-val" style="color:var(--orange)">7</div><div class="kpi-label">Cutoff Violations</div><div class="kpi-change down">▲ 3</div></div>
+        <div class="kpi-card" style="border-left-color:var(--blue)"><div class="kpi-val" style="color:var(--blue)">12</div><div class="kpi-label">Returns</div><div class="kpi-change up">▼ 5</div></div>
+      </div>
+      <div class="card-grid-2">
+        <div class="card">
+          <div class="card-title">📊 Waste Snapshot</div>
+          <div style="display:flex;gap:14px;margin-bottom:10px">
+            <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--red)">23</div><div style="font-size:8px;color:var(--t3)">Today</div></div>
+            <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--orange)">148</div><div style="font-size:8px;color:var(--t3)">7 days</div></div>
+            <div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--acc)">21</div><div style="font-size:8px;color:var(--t3)">Avg/day</div></div>
+          </div>
+          <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Expired</span><span style="color:var(--red)">89</span></div><div class="bar-track"><div class="bar-fill" style="width:72%;background:var(--red)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Damaged</span><span style="color:var(--orange)">52</span></div><div class="bar-track"><div class="bar-fill" style="width:42%;background:var(--orange)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Prod. Error</span><span style="color:var(--acc)">34</span></div><div class="bar-track"><div class="bar-fill" style="width:28%;background:var(--acc)"></div></div></div>
+          <div style="text-align:right;margin-top:6px"><a onclick="go('rpt-waste')" style="font-size:9px;color:var(--acc);cursor:pointer">Full Report →</a></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🏆 Top Ordered</div>
+          <div class="bar-item"><div class="bar-label"><span>🥇 <b>Croissant Original</b></span><span style="font-weight:700">342</span></div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--acc)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span>🥈 <b>Pain au Chocolat</b></span><span style="font-weight:700">298</span></div><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--acc)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span>🥉 <b>Sourdough Loaf</b></span><span style="font-weight:700">267</span></div><div class="bar-track"><div class="bar-fill" style="width:78%;background:var(--acc)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span>#4 <b>Banana Bread</b></span><span>215</span></div><div class="bar-track"><div class="bar-fill" style="width:63%;background:var(--blue)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span>#5 <b>Danish Pastry</b></span><span>189</span></div><div class="bar-track"><div class="bar-fill" style="width:55%;background:var(--blue)"></div></div></div>
+          <div style="text-align:right;margin-top:6px"><a onclick="go('rpt-top')" style="font-size:9px;color:var(--acc);cursor:pointer">Full Report →</a></div>
+        </div>
+      </div>
+      <div class="card-grid-2">
+        <div class="card">
+          <div class="card-title">🏥 Store Health</div>
+          <table>
+            <thead><tr><th>Store</th><th>Fulfil</th><th>Cutoff</th><th>Health</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:600">Mango Coco</td><td>96.5%</td><td><span class="badge badge-ok">0</span></td><td><span class="badge badge-ok">Good</span></td></tr>
+              <tr><td style="font-weight:600">Issho Cafe</td><td>91.2%</td><td><span class="badge badge-warn">2</span></td><td><span class="badge badge-warn">Fair</span></td></tr>
+              <tr><td style="font-weight:600;color:var(--red)">Golden Brown</td><td>88.7%</td><td><span class="badge badge-danger">3</span></td><td><span class="badge badge-danger">Alert</span></td></tr>
+              <tr><td style="font-weight:600">Red Wok</td><td>95.1%</td><td><span class="badge badge-ok">1</span></td><td><span class="badge badge-ok">Good</span></td></tr>
+              <tr><td style="font-weight:600">Siam Palette</td><td>93.8%</td><td><span class="badge badge-ok">1</span></td><td><span class="badge badge-ok">Good</span></td></tr>
+            </tbody>
+          </table>
+          <div style="text-align:right;margin-top:6px"><a onclick="go('rpt-ops')" style="font-size:9px;color:var(--acc);cursor:pointer">Full Report →</a></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔔 Active Alerts</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;gap:6px;padding:6px;background:var(--red-bg);border-radius:var(--rd);border-left:3px solid var(--red)"><span>🚨</span><div style="flex:1;font-size:10px"><b>High Waste</b> · Golden Brown 45 pcs</div><span style="font-size:8px;color:var(--t3)">2h</span></div>
+            <div style="display:flex;align-items:center;gap:6px;padding:6px;background:var(--orange-bg);border-radius:var(--rd);border-left:3px solid var(--orange)"><span>⏰</span><div style="flex:1;font-size:10px"><b>Cutoff</b> · Issho 10:45 PM</div><span style="font-size:8px;color:var(--t3)">1d</span></div>
+            <div style="display:flex;align-items:center;gap:6px;padding:6px;background:var(--orange-bg);border-radius:var(--rd);border-left:3px solid var(--orange)"><span>📦</span><div style="flex:1;font-size:10px"><b>Low Fulfil</b> · Golden Brown 88.7%</div><span style="font-size:8px;color:var(--t3)">3d</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 2. CREATE ORDER (EXIST)                -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-browse">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens_bcorder.js · Product grid with search, category filter, quota badges</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" placeholder="🔍 Search products..." style="flex:1;padding:8px 12px;border:1px solid var(--bd);border-radius:var(--rd);font-size:11px">
+      </div>
+      <div class="chip-row">
+        <span class="chip active">All</span><span class="chip">🍞 Bread</span><span class="chip">🥐 Pastry</span><span class="chip">🎂 Cake</span><span class="chip">🥪 Savory</span><span class="chip">🥤 Drink</span>
+      </div>
+      <div class="prod-grid">
+        <div class="prod-card"><div class="prod-icon">🥐</div><div class="prod-name">Croissant Original</div><div class="prod-qty">Quota: 50/day</div><div style="margin-top:6px"><input type="number" value="30" style="width:50px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center"></div></div>
+        <div class="prod-card"><div class="prod-icon">🍫</div><div class="prod-name">Pain au Chocolat</div><div class="prod-qty">Quota: 40/day</div><div style="margin-top:6px"><input type="number" value="25" style="width:50px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center"></div></div>
+        <div class="prod-card"><div class="prod-icon">🍞</div><div class="prod-name">Sourdough Loaf</div><div class="prod-qty">Quota: 30/day</div><div style="margin-top:6px"><input type="number" value="20" style="width:50px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center"></div></div>
+        <div class="prod-card"><div class="prod-icon">🍌</div><div class="prod-name">Banana Bread</div><div class="prod-qty">Quota: 25/day</div><div style="margin-top:6px"><input type="number" value="15" style="width:50px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center"></div></div>
+        <div class="prod-card"><div class="prod-icon">🧁</div><div class="prod-name">Danish Pastry</div><div class="prod-qty">Quota: 35/day</div><div style="margin-top:6px"><input type="number" value="20" style="width:50px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center"></div></div>
+        <div class="prod-card"><div class="prod-icon">🎂</div><div class="prod-name">Choc Mousse</div><div class="prod-qty">Quota: 15/day</div><div style="margin-top:6px"><input type="number" value="10" style="width:50px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;font-size:11px;text-align:center"></div></div>
+      </div>
+      <div style="margin-top:14px;text-align:right"><button style="padding:8px 20px;background:var(--acc);color:#fff;border:none;border-radius:var(--rd);font-size:11px;font-weight:600;cursor:pointer">🛒 Add to Cart (6 items)</button></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 3. VIEW ORDERS (EXIST)                 -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-orders">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens_bcorder.js · Order list with date filter & status chips</div>
+      <div class="date-bar"><span>📅</span><input type="date" value="2026-03-11"><span style="color:var(--t4)">→</span><input type="date" value="2026-03-18"><span class="date-link active">This week</span><span class="date-link">30d</span></div>
+      <div class="chip-row"><span class="chip active">All</span><span class="chip">Pending</span><span class="chip">Ordered</span><span class="chip">Fulfilled</span><span class="chip">Cancelled</span></div>
+      <div class="order-card"><div style="flex:1"><div class="order-id">BC-260318-001</div><div class="order-meta">Mango Coco · 18 Mar · 6 items</div></div><span class="sts sts-pending">Pending</span></div>
+      <div class="order-card"><div style="flex:1"><div class="order-id">BC-260317-003</div><div class="order-meta">Mango Coco · 17 Mar · 8 items</div></div><span class="sts sts-fulfilled">Fulfilled</span></div>
+      <div class="order-card"><div style="flex:1"><div class="order-id">BC-260317-001</div><div class="order-meta">Issho Cafe · 17 Mar · 4 items</div></div><span class="sts sts-fulfilled">Fulfilled</span></div>
+      <div class="order-card"><div style="flex:1"><div class="order-id">BC-260316-002</div><div class="order-meta">Golden Brown · 16 Mar · 12 items</div></div><span class="sts sts-fulfilled">Fulfilled</span></div>
+      <div class="order-card"><div style="flex:1"><div class="order-id">BC-260315-001</div><div class="order-meta">Red Wok · 15 Mar · 5 items</div></div><span class="sts sts-cancelled">Cancelled</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 4. SET QUOTA (EXIST)                   -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-quota">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens_bcorder.js · 7-day quota view per product</div>
+      <div class="chip-row"><span class="chip active">Mango Coco</span><span class="chip">Issho Cafe</span><span class="chip">Golden Brown</span></div>
+      <table>
+        <thead><tr><th>Product</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600">Croissant</td><td>50</td><td>50</td><td>45</td><td>50</td><td>60</td><td>70</td><td>40</td></tr>
+          <tr><td style="font-weight:600">Pain au Chocolat</td><td>40</td><td>40</td><td>35</td><td>40</td><td>50</td><td>55</td><td>30</td></tr>
+          <tr><td style="font-weight:600">Sourdough</td><td>30</td><td>30</td><td>25</td><td>30</td><td>35</td><td>40</td><td>20</td></tr>
+          <tr><td style="font-weight:600">Banana Bread</td><td>25</td><td>25</td><td>20</td><td>25</td><td>30</td><td>35</td><td>15</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 5. STOCK HISTORY (EXIST)               -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-stock">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens_bcorder.js · Historical stock tracking</div>
+      <div class="date-bar"><span>📅</span><input type="date" value="2026-03-11"><span style="color:var(--t4)">→</span><input type="date" value="2026-03-18"></div>
+      <table>
+        <thead><tr><th>Date</th><th>Product</th><th>Ordered</th><th>Received</th><th>Diff</th></tr></thead>
+        <tbody>
+          <tr><td>18/3</td><td style="font-weight:600">Croissant</td><td>50</td><td>48</td><td style="color:var(--red)">-2</td></tr>
+          <tr><td>18/3</td><td style="font-weight:600">Pain au Choc</td><td>40</td><td>40</td><td style="color:var(--green)">0</td></tr>
+          <tr><td>17/3</td><td style="font-weight:600">Sourdough</td><td>30</td><td>28</td><td style="color:var(--red)">-2</td></tr>
+          <tr><td>17/3</td><td style="font-weight:600">Banana Bread</td><td>25</td><td>20</td><td style="color:var(--red);font-weight:700">-5</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 6. BC INCOMING ORDERS (EXIST)          -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-bc-orders">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens2_bcorder.js · Accept/reject workflow for BC staff</div>
+      <div class="chip-row"><span class="chip active">Pending (3)</span><span class="chip">Accepted</span><span class="chip">All Today</span></div>
+      <div class="order-card" style="border-left:3px solid var(--orange)"><div style="flex:1"><div class="order-id">BC-260318-001 · Mango Coco</div><div class="order-meta">6 items · Delivery: 19 Mar</div></div><button style="padding:4px 12px;background:var(--green);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer">Accept</button><button style="padding:4px 12px;background:var(--red);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer;margin-left:4px">Reject</button></div>
+      <div class="order-card" style="border-left:3px solid var(--orange)"><div style="flex:1"><div class="order-id">BC-260318-002 · Issho Cafe</div><div class="order-meta">4 items · Delivery: 19 Mar</div></div><button style="padding:4px 12px;background:var(--green);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer">Accept</button><button style="padding:4px 12px;background:var(--red);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer;margin-left:4px">Reject</button></div>
+      <div class="order-card" style="border-left:3px solid var(--orange)"><div style="flex:1"><div class="order-id">BC-260318-003 · Golden Brown</div><div class="order-meta">12 items · Delivery: 19 Mar · ⏰ LATE</div></div><button style="padding:4px 12px;background:var(--green);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer">Accept</button><button style="padding:4px 12px;background:var(--red);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer;margin-left:4px">Reject</button></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 7. PRINT CENTRE (EXIST)                -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-print">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens2_bcorder.js · Production sheet (print-optimized)</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="date-bar" style="margin-bottom:0"><span>📅 Delivery:</span><input type="date" value="2026-03-19"></div>
+        <button style="padding:6px 16px;background:var(--acc);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer">🖨️ Print</button>
+      </div>
+      <table style="font-size:11px">
+        <thead><tr><th>#</th><th>Product</th><th>Mango Coco</th><th>Issho</th><th>Golden Brown</th><th>Red Wok</th><th>Siam Palette</th><th style="font-weight:800">TOTAL</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td style="font-weight:600">Croissant</td><td>50</td><td>30</td><td>60</td><td>25</td><td>20</td><td style="font-weight:800;color:var(--acc)">185</td></tr>
+          <tr><td>2</td><td style="font-weight:600">Pain au Choc</td><td>40</td><td>20</td><td>45</td><td>20</td><td>15</td><td style="font-weight:800;color:var(--acc)">140</td></tr>
+          <tr><td>3</td><td style="font-weight:600">Sourdough</td><td>30</td><td>15</td><td>35</td><td>15</td><td>10</td><td style="font-weight:800;color:var(--acc)">105</td></tr>
+          <tr><td>4</td><td style="font-weight:600">Banana Bread</td><td>25</td><td>10</td><td>30</td><td>10</td><td>8</td><td style="font-weight:800;color:var(--acc)">83</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 8. WASTE LOG (EXIST)                   -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-waste-log">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens_bcorder.js / screens2_bcorder.js · Record waste entries</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <div class="date-bar" style="margin-bottom:0"><span>📅</span><input type="date" value="2026-03-18"></div>
+        <button style="padding:6px 16px;background:var(--red);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer">+ Record Waste</button>
+      </div>
+      <table>
+        <thead><tr><th>Date</th><th>Product</th><th>Qty</th><th>Reason</th><th>By</th></tr></thead>
+        <tbody>
+          <tr><td>18/3</td><td style="font-weight:600">Croissant</td><td style="color:var(--red)">8</td><td>Expired</td><td>Staff A</td></tr>
+          <tr><td>18/3</td><td style="font-weight:600">Danish</td><td style="color:var(--red)">5</td><td>Damaged</td><td>Staff B</td></tr>
+          <tr><td>17/3</td><td style="font-weight:600">Sourdough</td><td style="color:var(--red)">3</td><td>Production Error</td><td>Staff A</td></tr>
+          <tr><td>17/3</td><td style="font-weight:600">Banana Bread</td><td style="color:var(--red)">7</td><td>Expired</td><td>Staff C</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 9. RETURNS (EXIST)                     -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-returns">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens_bcorder.js · Manage returns from store → BC</div>
+      <button style="padding:6px 16px;background:var(--orange);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer;margin-bottom:12px">+ New Return</button>
+      <table>
+        <thead><tr><th>Date</th><th>Order</th><th>Product</th><th>Qty</th><th>Reason</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>18/3</td><td style="color:var(--acc);font-weight:600">BC-260317-003</td><td>Pain au Choc</td><td>3</td><td>Quality Issue</td><td><span class="badge badge-warn">Pending</span></td></tr>
+          <tr><td>17/3</td><td style="color:var(--acc);font-weight:600">BC-260316-002</td><td>Croissant</td><td>5</td><td>Damaged</td><td><span class="badge badge-ok">Accepted</span></td></tr>
+          <tr><td>16/3</td><td style="color:var(--acc);font-weight:600">BC-260315-001</td><td>Danish</td><td>2</td><td>Wrong Item</td><td><span class="badge badge-ok">Accepted</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 10. RPT: WASTE DASHBOARD (EXIST)       -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-rpt-waste">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens3:451-507 · KPIs + By Reason + Top Waste</div>
+      <div class="date-bar"><span>📅</span><input type="date" value="2026-02-16"><span style="color:var(--t4)">→</span><input type="date" value="2026-03-18"><span class="date-link active">30d</span><span class="date-link">ทั้งหมด</span></div>
+      <div style="max-width:900px;margin:0 auto">
+        <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+          <div class="kpi-card" style="border-left-color:var(--red)"><div class="kpi-val" style="color:var(--red)">23</div><div class="kpi-label">Today</div></div>
+          <div class="kpi-card" style="border-left-color:var(--orange)"><div class="kpi-val" style="color:var(--orange)">148</div><div class="kpi-label">7 days</div></div>
+          <div class="kpi-card" style="border-left-color:var(--blue)"><div class="kpi-val" style="color:var(--blue)">623</div><div class="kpi-label">Total</div></div>
+          <div class="kpi-card" style="border-left-color:var(--acc)"><div class="kpi-val" style="color:var(--acc)">21</div><div class="kpi-label">Avg/day</div></div>
+        </div>
+        <div class="card-grid-2">
+          <div class="card"><div class="card-title">By Reason</div>
+            <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Expired</span><span>267</span></div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#ef4444"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Damaged</span><span>189</span></div><div class="bar-track"><div class="bar-fill" style="width:71%;background:#f97316"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Prod. Error</span><span>112</span></div><div class="bar-track"><div class="bar-fill" style="width:42%;background:var(--acc)"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Other</span><span>55</span></div><div class="bar-track"><div class="bar-fill" style="width:21%;background:var(--blue)"></div></div></div>
+          </div>
+          <div class="card"><div class="card-title">🏆 Top Waste</div>
+            <div class="bar-item"><div class="bar-label"><span>🥇 <b>Croissant</b></span><span style="color:var(--red)">89</span></div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--red)"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span>🥈 <b>Danish</b></span><span style="color:var(--red)">67</span></div><div class="bar-track"><div class="bar-fill" style="width:75%;background:var(--red)"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span>🥉 <b>Banana Bread</b></span><span style="color:var(--red)">45</span></div><div class="bar-track"><div class="bar-fill" style="width:51%;background:var(--red)"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 11. RPT: TOP PRODUCTS (EXIST + NEW)    -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-rpt-top">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST (Most Ordered + By Store) + 🆕 NEW (By Category)</div>
+      <div class="date-bar"><span>📅</span><input type="date" value="2026-02-16"><span style="color:var(--t4)">→</span><input type="date" value="2026-03-18"><span class="date-link active">30d</span><span class="date-link">ทั้งหมด</span></div>
+      <div style="max-width:900px;margin:0 auto">
+        <div class="card-grid-2">
+          <div class="card"><div class="card-title">🏆 Most Ordered <span class="tag-e">EXIST</span></div>
+            <div class="bar-item"><div class="bar-label"><span>🥇 <b>Croissant</b></span><span style="font-weight:700">342</span></div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--acc)"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span>🥈 <b>Pain au Choc</b></span><span style="font-weight:700">298</span></div><div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--acc)"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span>🥉 <b>Sourdough</b></span><span style="font-weight:700">267</span></div><div class="bar-track"><div class="bar-fill" style="width:78%;background:var(--acc)"></div></div></div>
+          </div>
+          <div class="card"><div class="card-title">🏪 By Store <span class="tag-e">EXIST</span></div>
+            <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Mango Coco</span><span>856</span></div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--green)"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Golden Brown</span><span>724</span></div><div class="bar-track"><div class="bar-fill" style="width:85%;background:var(--blue)"></div></div></div>
+            <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Issho Cafe</span><span>512</span></div><div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--orange)"></div></div></div>
+          </div>
+        </div>
+        <div class="card"><div class="card-title">📦 By Category <span class="tag-n">NEW</span></div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+            <div style="background:var(--bg2);border-radius:var(--rd);padding:10px;text-align:center"><div style="font-size:18px">🍞</div><div style="font-weight:700;color:var(--acc)">1,245</div><div style="font-size:9px;color:var(--t3)">Bread · 43.7%</div></div>
+            <div style="background:var(--bg2);border-radius:var(--rd);padding:10px;text-align:center"><div style="font-size:18px">🥐</div><div style="font-weight:700;color:var(--acc)">892</div><div style="font-size:9px;color:var(--t3)">Pastry · 31.3%</div></div>
+            <div style="background:var(--bg2);border-radius:var(--rd);padding:10px;text-align:center"><div style="font-size:18px">🎂</div><div style="font-weight:700;color:var(--acc)">398</div><div style="font-size:9px;color:var(--t3)">Cake · 14.0%</div></div>
+            <div style="background:var(--bg2);border-radius:var(--rd);padding:10px;text-align:center"><div style="font-size:18px">🥪</div><div style="font-weight:700;color:var(--acc)">215</div><div style="font-size:9px;color:var(--t3)">Savory · 7.5%</div></div>
+            <div style="background:var(--bg2);border-radius:var(--rd);padding:10px;text-align:center"><div style="font-size:18px">🥤</div><div style="font-weight:700;color:var(--acc)">97</div><div style="font-size:9px;color:var(--t3)">Drink · 3.4%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 12. RPT: OPERATIONAL HEALTH (NEW)      -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-rpt-ops">
+    <div class="content">
+      <div class="wireframe-note">🆕 NEW — Store Health + Cutoff (merged) + Returns + Order Accuracy</div>
+      <div class="date-bar"><span>📅</span><input type="date" value="2026-02-16"><span style="color:var(--t4)">→</span><input type="date" value="2026-03-18"><span class="date-link active">30d</span></div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi-card" style="border-left-color:var(--green)"><div class="kpi-val" style="color:var(--green)">94.2%</div><div class="kpi-label">Fulfilment Rate</div></div>
+        <div class="kpi-card" style="border-left-color:var(--orange)"><div class="kpi-val" style="color:var(--orange)">7</div><div class="kpi-label">Cutoff Violations</div></div>
+        <div class="kpi-card" style="border-left-color:var(--red)"><div class="kpi-val" style="color:var(--red)">12</div><div class="kpi-label">Returns</div></div>
+        <div class="kpi-card" style="border-left-color:var(--acc)"><div class="kpi-val" style="color:var(--acc)">87%</div><div class="kpi-label">Health Score</div></div>
+      </div>
+      <div class="card"><div class="card-title">🏪 Store Health Matrix</div>
+        <table>
+          <thead><tr><th>Store</th><th>Orders</th><th>Fulfil</th><th>Waste</th><th>Returns</th><th>Cutoff</th><th>Score</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600">Mango Coco</td><td>856</td><td><span class="badge badge-ok">96.5%</span></td><td>28</td><td>2</td><td><span class="badge badge-ok">0</span></td><td style="font-weight:700;color:var(--green)">96</td></tr>
+            <tr><td style="font-weight:600">Red Wok</td><td>445</td><td><span class="badge badge-ok">95.1%</span></td><td>18</td><td>1</td><td><span class="badge badge-ok">1</span></td><td style="font-weight:700;color:var(--green)">93</td></tr>
+            <tr><td style="font-weight:600">Issho Cafe</td><td>512</td><td><span class="badge badge-warn">91.2%</span></td><td>35</td><td>4</td><td><span class="badge badge-warn">2</span></td><td style="font-weight:700;color:var(--orange)">78</td></tr>
+            <tr style="background:var(--red-bg)"><td style="font-weight:600;color:var(--red)">Golden Brown</td><td>724</td><td><span class="badge badge-danger">88.7%</span></td><td>83</td><td>5</td><td><span class="badge badge-danger">3</span></td><td style="font-weight:700;color:var(--red)">62</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-grid-2">
+        <div class="card"><div class="card-title">⏰ Cutoff Violations <span class="tag-e">merged</span></div>
+          <table><thead><tr><th>Order</th><th>Store</th><th>Time</th><th>Status</th></tr></thead><tbody>
+            <tr style="border-left:3px solid var(--red)"><td style="color:var(--acc);font-weight:600">BC-260318-001</td><td>Golden Brown</td><td>22:45</td><td><span class="badge badge-danger">Pending</span></td></tr>
+            <tr style="border-left:3px solid var(--orange)"><td style="color:var(--acc);font-weight:600">BC-260317-003</td><td>Golden Brown</td><td>23:12</td><td><span class="badge badge-info">Fulfilled</span></td></tr>
+            <tr style="border-left:3px solid var(--orange)"><td style="color:var(--acc);font-weight:600">BC-260316-008</td><td>Issho</td><td>22:15</td><td><span class="badge badge-info">Fulfilled</span></td></tr>
+          </tbody></table>
+        </div>
+        <div class="card"><div class="card-title">🔄 Return Summary</div>
+          <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Quality Issue</span><span style="color:var(--red)">6</span></div><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--red)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Wrong Item</span><span style="color:var(--orange)">3</span></div><div class="bar-track"><div class="bar-fill" style="width:50%;background:var(--orange)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Over Qty</span><span style="color:var(--blue)">2</span></div><div class="bar-track"><div class="bar-fill" style="width:33%;background:var(--blue)"></div></div></div>
+          <div class="bar-item"><div class="bar-label"><span style="font-weight:600">Damaged</span><span style="color:var(--acc)">1</span></div><div class="bar-track"><div class="bar-fill" style="width:17%;background:var(--acc)"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 13. RPT: AUDIT TRAIL (EXIST)           -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-rpt-audit">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens3_bcorder.js · Audit log of all actions</div>
+      <div class="date-bar"><span>📅</span><input type="date" value="2026-03-11"><span style="color:var(--t4)">→</span><input type="date" value="2026-03-18"><span class="date-link active">7d</span></div>
+      <table>
+        <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td style="font-size:9px">18/3 14:32</td><td style="font-weight:600">Onnie</td><td><span class="badge badge-info">Config</span></td><td>Changed cutoff time to 22:00</td></tr>
+          <tr><td style="font-size:9px">18/3 10:15</td><td style="font-weight:600">Staff A</td><td><span class="badge badge-warn">Waste</span></td><td>Recorded 8 Croissant as Expired</td></tr>
+          <tr><td style="font-size:9px">17/3 22:45</td><td style="font-weight:600">Golden Brown</td><td><span class="badge badge-danger">Cutoff</span></td><td>Order BC-260318-003 after cutoff</td></tr>
+          <tr><td style="font-size:9px">17/3 16:00</td><td style="font-weight:600">Onnie</td><td><span class="badge badge-ok">Access</span></td><td>Added user Manager B to Mango Coco</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 14. ADM: MANAGE PRODUCTS (EXIST)       -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-adm-products">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens3_bcorder.js · Add/Edit products</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <input type="text" placeholder="🔍 Search..." style="padding:6px 12px;border:1px solid var(--bd);border-radius:var(--rd);font-size:11px;width:250px">
+        <button style="padding:6px 16px;background:var(--acc);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer">+ Add Product</button>
+      </div>
+      <table>
+        <thead><tr><th>Product</th><th>Category</th><th>Default Quota</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600">🥐 Croissant Original</td><td>Pastry</td><td>50</td><td><span class="badge badge-ok">Active</span></td><td><a style="color:var(--acc);cursor:pointer;font-size:10px">Edit</a></td></tr>
+          <tr><td style="font-weight:600">🍫 Pain au Chocolat</td><td>Pastry</td><td>40</td><td><span class="badge badge-ok">Active</span></td><td><a style="color:var(--acc);cursor:pointer;font-size:10px">Edit</a></td></tr>
+          <tr><td style="font-weight:600">🍞 Sourdough Loaf</td><td>Bread</td><td>30</td><td><span class="badge badge-ok">Active</span></td><td><a style="color:var(--acc);cursor:pointer;font-size:10px">Edit</a></td></tr>
+          <tr><td style="font-weight:600">🍌 Banana Bread</td><td>Bread</td><td>25</td><td><span class="badge badge-danger">Disabled</span></td><td><a style="color:var(--acc);cursor:pointer;font-size:10px">Edit</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 15. ADM: VISIBILITY (EXIST)            -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-adm-visibility">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens3_bcorder.js · Product visibility per channel/store</div>
+      <div class="chip-row"><span class="chip active">All Stores</span><span class="chip">Mango Coco</span><span class="chip">Issho</span><span class="chip">Golden Brown</span></div>
+      <table>
+        <thead><tr><th>Product</th><th>Mango Coco</th><th>Issho</th><th>Golden Brown</th><th>Red Wok</th><th>Siam Palette</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600">Croissant</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--green);text-align:center">✓</td></tr>
+          <tr><td style="font-weight:600">Pain au Choc</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--red);text-align:center">✗</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--green);text-align:center">✓</td></tr>
+          <tr><td style="font-weight:600">Sourdough</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--red);text-align:center">✗</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--green);text-align:center">✓</td><td style="color:var(--red);text-align:center">✗</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 16. ADM: USER ACCESS (EXIST)           -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-adm-access">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens3_bcorder.js · User permissions matrix</div>
+      <div class="access-grid">
+        <div class="access-cell hdr">User</div><div class="access-cell hdr">Store Order</div><div class="access-cell hdr">BC Ops</div><div class="access-cell hdr">Reports</div><div class="access-cell hdr">Admin</div>
+        <div class="access-cell row-hdr">Onnie (T1)</div><div class="access-cell access-check">✓</div><div class="access-cell access-check">✓</div><div class="access-cell access-check">✓</div><div class="access-cell access-check">✓</div>
+        <div class="access-cell row-hdr">Manager A (T3)</div><div class="access-cell access-check">✓</div><div class="access-cell access-check">✓</div><div class="access-cell access-check">✓</div><div class="access-cell access-x">✗</div>
+        <div class="access-cell row-hdr">Staff B (T6)</div><div class="access-cell access-check">✓</div><div class="access-cell access-x">✗</div><div class="access-cell access-x">✗</div><div class="access-cell access-x">✗</div>
+        <div class="access-cell row-hdr">BC Staff C (T5)</div><div class="access-cell access-x">✗</div><div class="access-cell access-check">✓</div><div class="access-cell access-x">✗</div><div class="access-cell access-x">✗</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 17. ADM: DEPT MAPPING (EXIST)          -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-adm-dept">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens3_bcorder.js · Department role mapping</div>
+      <table>
+        <thead><tr><th>Department</th><th>Role</th><th>Users</th><th>Stores</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:600">Executive</td><td><span class="badge badge-info">T1-T2</span></td><td>Onnie, CFO</td><td>All Stores</td></tr>
+          <tr><td style="font-weight:600">Store Manager</td><td><span class="badge badge-warn">T3-T4</span></td><td>Manager A, B, C</td><td>Assigned</td></tr>
+          <tr><td style="font-weight:600">BC Production</td><td><span class="badge badge-ok">T5</span></td><td>BC Staff A, B</td><td>BC Only</td></tr>
+          <tr><td style="font-weight:600">Store Cashier</td><td><span class="badge" style="background:var(--bg3);color:var(--t2)">T6-T7</span></td><td>Staff C, D, E</td><td>Assigned</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 18. ADM: SYSTEM CONFIG (EXIST)         -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-adm-config">
+    <div class="content">
+      <div class="wireframe-note">✅ EXIST — screens3_bcorder.js · Cutoff time, delivery days, order prefix</div>
+      <div style="max-width:500px">
+        <div class="card">
+          <div class="card-title">⚙️ System Config</div>
+          <div class="config-row"><span class="config-label">Cutoff Time</span><input type="time" class="config-inp" value="22:00"></div>
+          <div class="config-row"><span class="config-label">Delivery Days</span><input type="text" class="config-inp" value="Mon-Sat"></div>
+          <div class="config-row"><span class="config-label">Order ID Prefix</span><input type="text" class="config-inp" value="BC"></div>
+          <div class="config-row"><span class="config-label">Default Quota</span><input type="number" class="config-inp" value="30"></div>
+          <div class="config-row"><span class="config-label">Auto-close Orders</span><div class="toggle on"></div></div>
+          <div style="margin-top:12px;text-align:right"><button style="padding:6px 16px;background:var(--acc);color:#fff;border:none;border-radius:var(--rd);font-size:10px;cursor:pointer">Save Config</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- 19. ADM: ALERTS SETUP (NEW)            -->
+  <!-- ═══════════════════════════════════════ -->
+  <div class="page" id="p-adm-alerts">
+    <div class="content">
+      <div class="wireframe-note">🆕 NEW — Alert thresholds + notification channels</div>
+      <div style="max-width:650px">
+        <div class="card"><div class="card-title">📊 Waste Alerts</div>
+          <div class="alert-rule"><div class="rule-icon">🚨</div><div class="rule-body"><div class="rule-title">Daily Waste Threshold</div><div class="rule-desc">Alert เมื่อ waste/day เกิน threshold per store</div></div><input type="number" class="threshold-inp" value="30"><span style="font-size:9px;color:var(--t3)">pcs</span><div class="toggle on"></div></div>
+          <div class="alert-rule"><div class="rule-icon">📈</div><div class="rule-body"><div class="rule-title">Waste Spike (WoW)</div><div class="rule-desc">Alert เมื่อ waste สัปดาห์นี้เพิ่มเกิน %</div></div><input type="number" class="threshold-inp" value="20"><span style="font-size:9px;color:var(--t3)">%</span><div class="toggle on"></div></div>
+        </div>
+        <div class="card"><div class="card-title">🏥 Operational Alerts</div>
+          <div class="alert-rule"><div class="rule-icon">⏰</div><div class="rule-body"><div class="rule-title">Cutoff Violation</div><div class="rule-desc">Alert ทุกครั้งที่สั่งหลัง cutoff</div></div><span style="font-size:9px;color:var(--t3)">Always on</span><div class="toggle on"></div></div>
+          <div class="alert-rule"><div class="rule-icon">📦</div><div class="rule-body"><div class="rule-title">Low Fulfilment</div><div class="rule-desc">Alert เมื่อ fulfilment ต่ำกว่า threshold</div></div><input type="number" class="threshold-inp" value="90"><span style="font-size:9px;color:var(--t3)">%</span><div class="toggle on"></div></div>
+          <div class="alert-rule"><div class="rule-icon">🔄</div><div class="rule-body"><div class="rule-title">High Returns</div><div class="rule-desc">Alert เมื่อ return rate เกิน threshold</div></div><input type="number" class="threshold-inp" value="1"><span style="font-size:9px;color:var(--t3)">%</span><div class="toggle"></div></div>
+        </div>
+        <div class="card"><div class="card-title">🔔 Channels</div>
+          <div class="alert-rule"><div class="rule-icon">📱</div><div class="rule-body"><div class="rule-title">In-App</div><div class="rule-desc">แสดงใน Dashboard</div></div><div class="toggle on"></div></div>
+          <div class="alert-rule"><div class="rule-icon">📧</div><div class="rule-body"><div class="rule-title">Email Daily Summary</div><div class="rule-desc">ส่งสรุปทุกเช้า 8 AM</div></div><div class="toggle"></div></div>
+          <div class="alert-rule"><div class="rule-icon">💬</div><div class="rule-body"><div class="rule-title">LINE Notify</div><div class="rule-desc">ส่ง alert ทันที</div></div><span class="badge badge-warn" style="font-size:8px">Not Connected</span><div class="toggle"></div></div>
+        </div>
+        <div style="text-align:right;margin-top:10px"><button style="padding:6px 20px;background:var(--acc);color:#fff;border:none;border-radius:var(--rd);font-size:10px;font-weight:600;cursor:pointer">Save Settings</button></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const titles={overview:'Overview Dashboard',browse:'Create Order',orders:'View Orders',quota:'Set Quota',stock:'Stock History','bc-orders':'Incoming Orders',print:'Print Centre','waste-log':'Waste Log',returns:'Returns','rpt-waste':'Waste Dashboard','rpt-top':'Top Products','rpt-ops':'Operational Health','rpt-audit':'Audit Trail','adm-products':'Manage Products','adm-visibility':'Product Visibility','adm-access':'User Access','adm-dept':'Dept Mapping','adm-config':'System Config','adm-alerts':'Alerts Setup'};
+
+function go(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const p=document.getElementById('p-'+id);
+  if(p)p.classList.add('active');
+  document.getElementById('pageTitle').textContent=titles[id]||id;
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.remove('active');
+    if(n.getAttribute('onclick')&&n.getAttribute('onclick').includes("'"+id+"'"))n.classList.add('active');
+  });
+}
+document.querySelectorAll('.toggle').forEach(t=>t.addEventListener('click',()=>t.classList.toggle('on')));
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',function(){this.parentElement.querySelectorAll('.chip').forEach(s=>s.classList.remove('active'));this.classList.add('active')}));
+</script>
+</body>
+</html>

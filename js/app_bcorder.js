@@ -1,9 +1,9 @@
 /**
- * Version 2.3.7 | 18 MAR 2026 | Siam Palette Group
+ * Version 2.4.0 | 19 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * app_bcorder.js — Router + State + Sidebar + Cart + Utilities
- * Fix: normalizeProducts helper + section chips from categories master
+ * Add: Executive Dashboard routes + sidebar (exec-overview, exec-ops, exec-alerts)
  * ═══════════════════════════════════════════
  */
 
@@ -37,6 +37,9 @@ const App = (() => {
     topProds: null,
     cutoffData: null,
     auditData: null,
+    // Phase 8: Executive Dashboard
+    execDash: null,
+    alertConfig: null,
   };
 
   const appEl = () => document.getElementById('app');
@@ -76,6 +79,10 @@ const App = (() => {
     'top-products':     { render: () => Scr3.renderTopProducts(),    title: 'Top Products',     onLoad: () => loadTopProducts() },
     'cutoff':           { render: () => Scr3.renderCutoff(),         title: 'Cutoff',           onLoad: () => loadCutoffData() },
     'audit':            { render: () => Scr3.renderAudit(),          title: 'Audit Trail',      onLoad: () => loadAuditData() },
+    // Phase 8: Executive Dashboard routes
+    'exec-overview':    { render: () => Scr4.renderExecOverview(),  title: 'Executive Overview', onLoad: () => Scr4.fillExecOverview() },
+    'exec-ops':         { render: () => Scr4.renderExecOps(),       title: 'Operational Health', onLoad: () => Scr4.fillExecOps() },
+    'exec-alerts':      { render: () => Scr4.renderExecAlerts(),    title: 'Alerts Setup',       onLoad: () => Scr4.fillExecAlerts() },
   };
 
   // ─── NAVIGATE ───
@@ -86,7 +93,8 @@ const App = (() => {
     currentParams = params;
 
     const authScreens = ['home','browse','cart','orders','order-detail','quota','waste','returns','stock-history','accept','fulfil','print','bc-returns','products','prod-edit',
-      'visibility','access','dept-mapping','config','waste-dashboard','top-products','cutoff','audit'];
+      'visibility','access','dept-mapping','config','waste-dashboard','top-products','cutoff','audit',
+      'exec-overview','exec-ops','exec-alerts'];
     if (authScreens.includes(route) && S.session) {
       if (!_shellMounted) mountShell();
       const main = document.querySelector('.shell-main');
@@ -640,8 +648,20 @@ const App = (() => {
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
       ).join(''));
 
-      // Reports group FIRST (T1-T3 only)
+      // Executive group (T1-T2 only)
       const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+      if (tl <= 2) {
+        const execItems = [
+          { r: 'exec-overview', lbl: 'Overview' },
+          { r: 'exec-ops',     lbl: 'Operational Health' },
+          { r: 'exec-alerts',  lbl: 'Alerts Setup' },
+        ];
+        html += sdGroup('executive', '◆', 'Executive', execItems.map(
+          i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
+        ).join(''));
+      }
+
+      // Reports group (T1-T3 only)
       if (tl <= 3) {
         const reportItems = [];
         if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
@@ -670,7 +690,7 @@ const App = (() => {
     }
 
     html += `<div class="sd-footer">
-      <div class="sd-version">v2.3.7 | 18 Mar 2026</div>
+      <div class="sd-version">v2.4.0 | 19 Mar 2026</div>
       <a href="${API.HOME_URL}"><span>←</span><span class="sd-item-text"> Back to Home</span></a>
       <a href="#" class="danger" onclick="API.logout();return false"><span>→</span><span class="sd-item-text"> Log out</span></a>
     </div>`;
@@ -728,8 +748,16 @@ const App = (() => {
       html += mobItem('waste', '▤', 'Waste Log');
       html += mobItem('bc-returns', '▤', 'Incoming Returns');
 
-      // Reports section FIRST (T1-T3 only)
+      // Executive section (T1-T2 only)
       const tlMob = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+      if (tlMob <= 2) {
+        html += '<div style="height:4px"></div><div class="mob-sidebar-section">Executive</div>';
+        html += mobItem('exec-overview', '◆', 'Overview');
+        html += mobItem('exec-ops', '◆', 'Operational Health');
+        html += mobItem('exec-alerts', '◆', 'Alerts Setup');
+      }
+
+      // Reports section (T1-T3 only)
       if (tlMob <= 3) {
         const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
         if (hasAnyReport) {
@@ -753,7 +781,7 @@ const App = (() => {
       }
     }
 
-    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.3.7</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
+    html += `<div class="mob-sd-footer"><div style="font-size:9px;color:var(--t4);margin-bottom:4px">v2.4.0</div><a href="${API.HOME_URL}" style="font-size:10px;color:var(--t3);text-decoration:none">← Back to Home</a><br><a href="#" style="font-size:10px;color:var(--red);text-decoration:none" onclick="API.logout();return false">→ Log out</a></div>`;
     panel.innerHTML = html;
   }
   function mobItem(route, icon, label) {
@@ -892,6 +920,7 @@ const App = (() => {
     loadBCDashboard, loadPrintCentre, loadBCReturnsData, loadAdminProducts, loadProdEdit,
     loadDeptMappingData, loadVisibility, loadAccessMatrix,
     loadWasteDashboard, loadTopProducts, loadCutoffData, loadAuditData,
+    loadExecOverview: () => Scr4.fillExecOverview(), loadExecOps: () => Scr4.fillExecOps(), loadExecAlerts: () => Scr4.fillExecAlerts(),
     getStoreName, getDeptName,
     sydneyNow, fmtDate, todaySydney, tomorrowSydney, fmtDateThai, fmtDateAU,
   };

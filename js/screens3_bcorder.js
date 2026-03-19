@@ -1,9 +1,9 @@
 /**
- * Version 1.3.6 | 18 MAR 2026 | Siam Palette Group
+ * Version 1.4.0 | 19 MAR 2026 | Siam Palette Group
  * ═══════════════════════════════════════════
  * SPG — BC Order v2
  * screens3_bcorder.js — Admin + Reports Screens
- * Fix: User Access boolean, DRY toggleVis/togglePerm, debounce vis search, DRY date presets
+ * Add: Top Products "By Category" section
  * ═══════════════════════════════════════════
  */
 
@@ -552,12 +552,27 @@ const Scr3 = (() => {
     ).join('');
     const storeBlock = storeBars ? `<div class="rpt-section"><div class="rpt-section-title">🏪 By Store</div>${storeBars}</div>` : '';
 
-    if (!orderedBars && !storeBars) {
+    // By Category
+    const catIcons = { 'Bread': '🍞', 'Pastry': '🥐', 'Cake': '🎂', 'Savory': '🥪', 'Drink': '🥤' };
+    const byCat = d.by_category || [];
+    const totalCat = byCat.reduce((sum, c) => sum + (c.qty || 0), 0) || 1;
+    const catCards = byCat.map(c => {
+      const icon = catIcons[c.category_name] || catIcons[c.name] || '📦';
+      const pct = ((c.qty / totalCat) * 100).toFixed(1);
+      return `<div style="background:var(--bg2);border-radius:var(--rd);padding:10px;text-align:center">
+        <div style="font-size:18px">${icon}</div>
+        <div style="font-weight:700;color:var(--acc)">${c.qty}</div>
+        <div style="font-size:9px;color:var(--t3)">${App.esc(c.category_name || c.name)} · ${pct}%</div>
+      </div>`;
+    }).join('');
+    const catBlock = byCat.length ? `<div class="rpt-section" style="margin-top:14px"><div class="rpt-section-title">📦 By Category</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px">${catCards}</div></div>` : '';
+
+    if (!orderedBars && !storeBars && !byCat.length) {
       el.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><div class="empty-title">ไม่มีข้อมูลในช่วงนี้</div></div>';
       return;
     }
 
-    el.innerHTML = `<div style="max-width:800px;margin:0 auto">${orderedBlock}${storeBlock}</div>`;
+    el.innerHTML = `<div style="max-width:800px;margin:0 auto">${orderedBlock}${storeBlock}${catBlock}</div>`;
   }
 
   function setTPDate(which, val) { if (which === 'from') _tpDateFrom = val; else _tpDateTo = val; App.loadTopProducts(_tpDateFrom, _tpDateTo); }
