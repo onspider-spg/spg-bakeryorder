@@ -453,6 +453,12 @@ const Scr = (() => {
     const btn = document.getElementById('submitBtn');
     if (!btn || btn.disabled) return;
 
+    // ── Empty cart guard ──
+    if (!App.S.cart || App.S.cart.length === 0) {
+      App.toast('ไม่มีรายการในตะกร้า', 'error');
+      return;
+    }
+
     // ── Stock validation (hard block) ──
     const stockCheck = validateStockBeforeSubmit();
     if (!stockCheck.valid) {
