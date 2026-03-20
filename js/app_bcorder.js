@@ -661,6 +661,7 @@ const App = (() => {
       }
 
       // Reports group (T1-T3 only)
+      const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
       if (tl <= 3) {
         const reportItems = [];
         if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
@@ -756,6 +757,7 @@ const App = (() => {
       }
 
       // Reports section (T1-T3 only)
+      const tlMob = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
       if (tlMob <= 3) {
         const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
         if (hasAnyReport) {
