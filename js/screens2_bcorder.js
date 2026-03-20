@@ -13,7 +13,7 @@ const Scr2 = (() => {
   function renderBCDashboard() {
     const s = App.S.session || {};
     return `<div class="content" id="mainContent">
-      <div style="margin-bottom:16px"><div style="font-size:14px;font-weight:700;margin-bottom:2px">Welcome, ${App.esc(s.display_name)}</div><div style="font-size:11px;color:var(--t3)">${App.esc(s.tier_id)} · BC Staff · ${App.esc(s.dept_id)}</div></div>
+      <div style="margin-bottom:16px"><div style="font-size:14px;font-weight:700;margin-bottom:2px">Welcome, ${App.esc(s.display_name)}</div><div style="font-size:11px;color:var(--t3)">${App.esc(s.position_id ? s.position_name : s.tier_id)} · BC Staff · ${App.esc(s.dept_id)}</div></div>
       <div class="bc-kpis" id="bcKpis"></div>
       <div class="bc-progress" id="bcProgress"></div>
       <div id="bcAlerts"></div>

@@ -660,8 +660,8 @@ const App = (() => {
         ).join(''));
       }
 
-      // Reports group (T1-T3 only)
-      const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+      // Reports group (T1-T3 / position level 1-3)
+      const tl = S.session?.position_id ? (S.session?.position_level || 99) : parseInt((S.session?.tier_id || 'T9').replace('T', ''));
       if (tl <= 3) {
         const reportItems = [];
         if (hasPerm('fn_view_waste'))       reportItems.push({ r: 'waste-dashboard', lbl: 'Waste Dashboard' });
@@ -727,7 +727,8 @@ const App = (() => {
     const s = S.session || {};
     const initials = getInitials(s.display_name);
     const isAdmin = S.sidebarRole === 'admin';
-    let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(initials)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(s.tier_id)} · ${esc(getStoreName(s.store_id))}${s.dept_id && s.dept_id !== 'ALL' ? ' · ' + esc(s.dept_id) : ''}</div></div></div>`;
+    const roleLabel = s.position_id ? s.position_name : s.tier_id;
+    let html = `<div class="mob-sidebar-header"><div class="topbar-avatar" style="width:28px;height:28px;font-size:10px">${esc(initials)}</div><div><div style="font-size:12px;font-weight:600">${esc(s.display_name)}</div><div style="font-size:9px;color:var(--t3)">${esc(roleLabel)} · ${esc(getStoreName(s.store_id))}${s.dept_id && s.dept_id !== 'ALL' ? ' · ' + esc(s.dept_id) : ''}</div></div></div>`;
     html += mobItem('home', '◇', 'Dashboard');
 
     if (S.role === 'store') {
@@ -756,8 +757,8 @@ const App = (() => {
         html += mobItem('exec-alerts', '◆', 'Alerts Setup');
       }
 
-      // Reports section (T1-T3 only)
-      const tlMob = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+      // Reports section (T1-T3 / position level 1-3)
+      const tlMob = S.session?.position_id ? (S.session?.position_level || 99) : parseInt((S.session?.tier_id || 'T9').replace('T', ''));
       if (tlMob <= 3) {
         const hasAnyReport = hasPerm('fn_view_waste') || isAdmin || hasPerm('fn_view_audit_log');
         if (hasAnyReport) {
@@ -817,7 +818,7 @@ const App = (() => {
       <div style="background:var(--bg3);border-radius:var(--rd);padding:14px;font-size:13px;margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Store</span><span style="font-weight:600">${esc(getStoreName(s.store_id))}</span></div>
         <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Dept</span><span style="font-weight:600">${esc(s.dept_id)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Tier</span><span style="font-weight:600">${esc(s.tier_id)}</span></div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">${s.position_id ? 'Position' : 'Tier'}</span><span style="font-weight:600">${esc(s.position_id ? s.position_name : s.tier_id)}</span></div>
         <div style="display:flex;justify-content:space-between;padding:5px 0"><span style="color:var(--t3)">Stock Points</span><span style="font-weight:600">${getStockPoints()}</span></div>
       </div>
       <button class="btn btn-primary btn-full" style="margin-bottom:10px" onclick="App.closeDialog();location.href='${API.HOME_URL}'">View Full Profile</button>
@@ -833,7 +834,7 @@ const App = (() => {
   }
   function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
   function hasPerm(fnId) {
-    const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
+    const tl = S.session?.position_id ? (S.session?.position_level || 99) : parseInt((S.session?.tier_id || 'T9').replace('T', ''));
     if (tl <= 2) return true;
     if (S.permissions.includes(fnId)) return true;
     // Implied permissions (match backend checkPerm line 141-142)
@@ -893,7 +894,7 @@ const App = (() => {
       if (S.deptMapping && S.deptMapping.module_role === 'not_applicable') { go('blocked', {}, true); return; }
       const mr = S.deptMapping?.module_role;
       S.role = (mr === 'bc_production' || mr === 'bc_management') ? 'bc' : 'store';
-      const tl = parseInt((S.session.tier_id || 'T9').replace('T', '')); S.sidebarRole = tl <= 2 ? 'admin' : S.role;
+      const tl = S.session.position_id ? (S.session.position_level || 99) : parseInt((S.session.tier_id || 'T9').replace('T', '')); S.sidebarRole = tl <= 2 ? 'admin' : S.role;
       const { route: hr, params: hp } = parseHash(savedHash);
       if (hr && ROUTES[hr] && !['loading', 'no-token', 'invalid-token', 'blocked'].includes(hr)) go(hr, hp, true);
       else go('home', {}, true);
