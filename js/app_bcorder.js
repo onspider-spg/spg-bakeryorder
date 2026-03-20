@@ -648,9 +648,8 @@ const App = (() => {
         i => `<div class="sd-flyout-item${currentRoute === i.r ? ' active' : ''}" data-route="${i.r}" onclick="App.go('${i.r}')">${i.lbl}</div>`
       ).join(''));
 
-      // Executive group (T1-T2 only)
-      const tl = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
-      if (tl <= 2) {
+      // Executive group (admin only)
+      if (isAdmin) {
         const execItems = [
           { r: 'exec-overview', lbl: 'Overview' },
           { r: 'exec-ops',     lbl: 'Operational Health' },
@@ -748,9 +747,8 @@ const App = (() => {
       html += mobItem('waste', '▤', 'Waste Log');
       html += mobItem('bc-returns', '▤', 'Incoming Returns');
 
-      // Executive section (T1-T2 only)
-      const tlMob = parseInt((S.session?.tier_id || 'T9').replace('T', ''));
-      if (tlMob <= 2) {
+      // Executive section (admin only)
+      if (S.sidebarRole === 'admin') {
         html += '<div style="height:4px"></div><div class="mob-sidebar-section">Executive</div>';
         html += mobItem('exec-overview', '◆', 'Overview');
         html += mobItem('exec-ops', '◆', 'Operational Health');
