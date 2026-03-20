@@ -106,5 +106,8 @@ const API = (() => {
     getAuditTrail:     (p = {})    => get('get_audit_trail', p),
     uploadImage:       (b)         => post('upload_image', b),
     changeDeliveryDate:(b)         => post('change_delivery_date', b),
+    // ─── Phase 8: Executive Dashboard (3 new) ───
+    get:               (action, p = {}) => get(action, p),
+    post:              (action, b)      => post(action, b),
   };
 })();
