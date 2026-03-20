@@ -11,9 +11,10 @@ const Scr3 = (() => {
 
   // ─── CONFIG METADATA (display labels for known keys) ───
   const CONFIG_META = {
-    cutoff_time:     { label: '⏰ Cutoff Time',     desc: 'Orders after this time → flag as cutoff violation' },
-    delivery_days:   { label: '📅 Delivery Days',   desc: 'Available days for delivery orders' },
-    order_id_prefix: { label: '🏷️ Order ID Prefix', desc: 'Prefix for new order IDs' },
+    cutoff_time:         { label: '⏰ Cutoff Time',         desc: 'Orders after this time → flag as cutoff violation' },
+    delivery_days:       { label: '📅 Delivery Days',       desc: 'Available days for delivery orders' },
+    order_id_prefix:     { label: '🏷️ Order ID Prefix',     desc: 'Prefix for new order IDs' },
+    thermal_printer_ip:  { label: '🖨️ Thermal Printer IP',  desc: 'Epson TM-M30III IP address for thermal delivery slip printing (e.g. 192.168.1.100)' },
   };
 
   const ROLE_COLORS = {

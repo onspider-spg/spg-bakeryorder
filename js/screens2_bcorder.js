@@ -541,7 +541,10 @@ const Scr2 = (() => {
     lines.forEach(ln => { screen += renderLine(ln); });
     screen += '<div style="border-top:1px dashed #ccc;margin-top:8px;padding-top:6px;font-size:10px">Packed by: ____________<br>Checked by: ___________</div>';
     screen += '</div>';
-    screen += '<div style="text-align:center;margin-top:12px"><button class="btn btn-primary" style="padding:10px 24px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print Delivery Slip</button></div>';
+    screen += '<div style="text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">';
+    screen += '<button class="btn btn-primary" style="padding:10px 24px" onclick="Scr2.printThermalSlip()">\uD83D\uDDA8\uFE0F Print</button>';
+    screen += '<button class="btn btn-outline" style="padding:10px 16px;font-size:11px" onclick="window.print()">\uD83D\uDDA8\uFE0F Print A4</button>';
+    screen += '</div>';
     screen += '</div>';
 
     // ─── PRINT: Paginated pages ───
@@ -563,6 +566,104 @@ const Scr2 = (() => {
 
     return screen + print;
   }
+
+  // ═══ THERMAL PRINT (Epson TM-M30III via ePOS XML) ═══
+
+  async function printThermalSlip() {
+    const ip = App.S.config.thermal_printer_ip;
+    if (!ip) {
+      App.toast('\u0e01\u0e23\u0e38\u0e13\u0e32\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32 Printer IP \u0e43\u0e19 Admin > System Config', 'warning');
+      return;
+    }
+
+    const d = App.S.printData;
+    if (!d || !_slipStore) { App.toast('\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e1e\u0e34\u0e21\u0e1e\u0e4c', 'warning'); return; }
+
+    // Build line data (same logic as renderDeliverySlip)
+    let prods = (d.products || []).filter(p => p.stores[_slipStore]);
+    if (_printSections.size > 0) prods = prods.filter(p => _printSections.has(p.section_id));
+    if (!prods.length) { App.toast('\u0e44\u0e21\u0e48\u0e21\u0e35\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e23\u0e49\u0e32\u0e19\u0e19\u0e35\u0e49', 'warning'); return; }
+
+    const sections = {};
+    prods.forEach(p => {
+      const sec = p.section_id || 'other';
+      if (!sections[sec]) sections[sec] = [];
+      sections[sec].push(p);
+    });
+
+    const storeOrders = (d.orders || []).filter(o => o.store_id === _slipStore);
+    const orderStr = storeOrders.map(o => o.order_id).join(', ');
+    const storeName = App.getStoreName(_slipStore);
+    const W = 48; // 80mm ≈ 48 chars (Font A)
+    const line = (ch, len) => ch.repeat(len || W);
+    const pad = (l, r, w) => { const sp = w - l.length - r.length; return l + (sp > 0 ? ' '.repeat(sp) : ' ') + r; };
+
+    // Build ePOS XML commands
+    let cmds = '';
+    // Header
+    cmds += '<text align="center" smooth="true"/>';
+    cmds += '<text dw="true" dh="true"/>'; // double width+height
+    cmds += '<text>SPG Bakery&#10;</text>';
+    cmds += '<text dw="false" dh="false"/>';
+    cmds += '<text>' + escXml(line('=')) + '&#10;</text>';
+    cmds += '<text align="left"/>';
+    cmds += '<text>Store: ' + escXml(storeName) + '&#10;</text>';
+    cmds += '<text>Date:  ' + escXml(App.fmtDateThai(_printDate)) + '&#10;</text>';
+    if (orderStr) cmds += '<text>Orders: ' + escXml(orderStr) + '&#10;</text>';
+    cmds += '<text>' + escXml(line('-')) + '&#10;</text>';
+
+    // Body — sections + items
+    for (const sec of Object.keys(sections).sort()) {
+      cmds += '<text em="true"/>';
+      cmds += '<text>=== ' + escXml(sec.toUpperCase()) + ' ===&#10;</text>';
+      cmds += '<text em="false"/>';
+      sections[sec].forEach(p => {
+        const sv = p.stores[_slipStore];
+        const star = sv.urgent ? '\u2B50 ' : '';
+        const name = star + p.product_name;
+        const qty = 'x ' + sv.qty;
+        cmds += '<text>' + escXml(pad(name, qty, W)) + '&#10;</text>';
+      });
+      cmds += '<text>&#10;</text>';
+    }
+
+    // Footer
+    cmds += '<text>' + escXml(line('-')) + '&#10;</text>';
+    cmds += '<text>Packed by:  ____________&#10;</text>';
+    cmds += '<text>Checked by: ____________&#10;</text>';
+    cmds += '<text>' + escXml(line('=')) + '&#10;</text>';
+    cmds += '<feed line="3"/>';
+    cmds += '<cut type="feed"/>';
+
+    const xml = '<?xml version="1.0" encoding="utf-8"?>'
+      + '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">'
+      + '<s:Body>'
+      + '<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">'
+      + cmds
+      + '</epos-print>'
+      + '</s:Body>'
+      + '</s:Envelope>';
+
+    // Send to printer
+    App.toast('\u0e01\u0e33\u0e25\u0e31\u0e07\u0e1e\u0e34\u0e21\u0e1e\u0e4c...', 'info');
+    try {
+      const url = 'https://' + ip + '/cgi-bin/epos/service.cgi?devid=local_printer&timeout=10000';
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+        body: xml,
+        mode: 'no-cors',
+      });
+      // no-cors → response is opaque, assume success if no network error
+      App.toast('\u2705 \u0e1e\u0e34\u0e21\u0e1e\u0e4c\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08', 'success');
+    } catch (e) {
+      console.error('Thermal print error:', e);
+      App.toast('\u0e44\u0e21\u0e48\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e40\u0e0a\u0e37\u0e48\u0e2d\u0e21\u0e15\u0e48\u0e2d Printer \u2014 \u0e40\u0e0a\u0e47\u0e04 IP \u0e41\u0e25\u0e30 WiFi', 'error');
+    }
+  }
+
+  // Helper: escape XML special chars for ePOS
+  function escXml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
   function setPrintTab(tab) { _printTab = tab; fillPrint(); }
   function togglePrintSec(sec, checked) {
@@ -1125,7 +1226,7 @@ const Scr2 = (() => {
     renderAccept, fillAccept, doAccept, showRejectDialog, doReject,
     renderFulfil, fillFulfil, fulfilFull, fulfilPartial, fulfilClear, setFulfilQty, setFulfilNote,
     saveFulfilment, doMarkDelivered,
-    renderPrint, fillPrint, setPrintTab, togglePrintSec, togglePrintSecAll, setSlipStore, setPrintDate,
+    renderPrint, fillPrint, setPrintTab, togglePrintSec, togglePrintSecAll, setSlipStore, setPrintDate, printThermalSlip,
     renderBCReturns, fillBCReturns, doReceive, doResolve, showBCRetDetail,
     setBCRetDate, setBCRetPreset, setBCRetFilter, showMoreBCRet,
     renderProducts, fillProducts, setProdTab, filterProds, setProdSection,
